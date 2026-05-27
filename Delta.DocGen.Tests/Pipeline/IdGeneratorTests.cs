@@ -77,4 +77,20 @@ public sealed class IdGeneratorTests
 
         r1[0].Id.Should().Be(r2[0].Id);
     }
+
+    [Fact]
+    public void DuplicatePatternInSameDomainThrowsInvalidOperationException()
+    {
+        // Same pattern, same domain = same ID = collision.
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs",  1, "", "Auth"),
+            new(StepType.When,  "I am logged in", [], "Auth/AuthSteps.cs", 10, "", "Auth"),
+        };
+
+        var act = () => IdGenerator.Generate(
+            steps, new Dictionary<string, int>(), [], "General", NullDocGenLogger.Instance);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*collision*");
+    }
 }
