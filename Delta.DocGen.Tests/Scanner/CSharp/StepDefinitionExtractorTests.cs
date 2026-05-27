@@ -69,4 +69,69 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         steps[1].Type.Should().Be("Then");
         steps[1].Params.Should().ContainSingle(p => p.Type == "string");
     }
+
+    [Fact]
+    public void MapsIntAndDecimalParamTypes()
+    {
+        var path = WriteFile("Steps/TypedSteps.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given("I have {int} items costing {decimal} each")]
+                public void GivenItems(int count, decimal price) { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        steps[0].Params.Should().HaveCount(2);
+        steps[0].Params[0].Name.Should().Be("count");
+        steps[0].Params[0].Type.Should().Be("int");
+        steps[0].Params[0].Example.Should().Be("0");
+        steps[0].Params[1].Name.Should().Be("price");
+        steps[0].Params[1].Type.Should().Be("decimal");
+        steps[0].Params[1].Example.Should().Be("0.00");
+    }
+
+    [Fact]
+    public void DetectsDocStringParam()
+    {
+        var path = WriteFile("Steps/DocStringSteps.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given("I send the request")]
+                public void GivenISendTheRequest(string body) { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        steps[0].Params.Should().ContainSingle();
+        steps[0].Params[0].Name.Should().Be("body");
+        steps[0].Params[0].Type.Should().Be("DocString");
+        steps[0].Params[0].Example.Should().Be("");
+    }
+
+    [Fact]
+    public void DistinguishesStringAndDocStringParams()
+    {
+        var path = WriteFile("Steps/MixedSteps.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given("I am {string} with payload")]
+                public void GivenIAmWithPayload(string name, string body) { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        steps[0].Params.Should().HaveCount(2);
+        steps[0].Params[0].Type.Should().Be("string");
+        steps[0].Params[1].Type.Should().Be("DocString");
+    }
 }
