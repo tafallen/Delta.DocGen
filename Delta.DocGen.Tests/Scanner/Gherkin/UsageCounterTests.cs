@@ -222,4 +222,45 @@ public sealed class UsageCounterTests : IDisposable
 
         logger.WarnMessages.Should().BeEmpty();
     }
+
+    [Fact]
+    public void ScenarioOutlineStepCountedOnceNotPerExampleRow()
+    {
+        // The outline template step "I am on the shop page" appears once in the AST.
+        // It should be counted as 1 regardless of how many Example rows exist.
+        var path = WriteFeatureFile("Features/Shop.feature", """
+            Feature: Shop
+
+              Scenario Outline: Browse products
+                Given I am on the shop page
+
+              Examples:
+                | product |
+                | apple   |
+                | banana  |
+                | cherry  |
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am on the shop page", [], "Shop/ShopSteps.cs", 1, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I am on the shop page"].Should().Be(1);
+    }
+
+    [Fact]
+    public void ThrowsFileNotFoundForMissingFeatureFile()
+    {
+        var missing = "Features/DoesNotExist.feature";
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "")
+        };
+
+        var act = () => UsageCounter.Count(steps, missing, _root, NullDocGenLogger.Instance);
+
+        act.Should().Throw<System.IO.IOException>();
+    }
 }
