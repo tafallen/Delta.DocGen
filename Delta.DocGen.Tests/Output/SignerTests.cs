@@ -66,4 +66,22 @@ public sealed class SignerTests
 
         signedEmpty.Signature!.Digest.Should().NotBe(signedFilled.Signature!.Digest);
     }
+
+    [Fact]
+    public void SignatureFieldIsExcludedFromHashedContent()
+    {
+        // Sign the envelope. Then recompute: strip signature, serialise canonically,
+        // hash — must match the stored digest.
+        var envelope = MakeEnvelope();
+        var signed = Signer.Sign(envelope);
+
+        var unsigned = signed with { Signature = null };
+        var canonical = CanonicalJson.Serialise(unsigned);
+        var expectedDigest = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(canonical)))
+            .ToLowerInvariant();
+
+        signed.Signature!.Digest.Should().Be(expectedDigest);
+    }
 }
