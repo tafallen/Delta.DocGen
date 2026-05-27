@@ -144,4 +144,15 @@ public sealed class PipelineRunnerTests : IDisposable
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().NotBeNullOrEmpty();
     }
+
+    [Fact]
+    public void RunEmitsSummaryLogWithKeyCounts()
+    {
+        var logger = new CapturingDocGenLogger();
+
+        PipelineRunner.Run(BuildConfig(), logger);
+
+        logger.SummaryMessages.Should().ContainSingle(m =>
+            m.Contains("3 step") && m.Contains("2 domain") && m.Contains("2 C#") && m.Contains("1 feature"));
+    }
 }
