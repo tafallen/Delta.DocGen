@@ -33,13 +33,34 @@ public static class ConfigLoader
 
         return new DocGenConfig
         {
-            Root           = overrides.Root         ?? file.Root         ?? throw new InvalidOperationException("'root' is required in config."),
-            Output         = overrides.Output        ?? file.Output       ?? throw new InvalidOperationException("'output' is required in config."),
-            LogVerbosity   = overrides.LogVerbosity  ?? file.LogVerbosity ?? "normal",
-            FallbackDomain = file.FallbackDomain     ?? "General",
+            Root           = ResolveRequired(overrides.Root,        file.Root,        "root"),
+            Output         = ResolveRequired(overrides.Output,      file.Output,      "output"),
+            LogVerbosity   = overrides.LogVerbosity ?? file.LogVerbosity ?? "normal",
+            FallbackDomain = file.FallbackDomain ?? "General",
             Exclude        = excludes.AsReadOnly(),
-            Domains        = (file.Domains ?? []).Select(d => new DomainRule(d.Pattern, d.Domain, d.Label)).ToList().AsReadOnly(),
+            Domains        = MapDomains(file.Domains),
         };
+    }
+
+    private static string ResolveRequired(string? cliVal, string? fileVal, string name)
+    {
+        var v = cliVal ?? fileVal;
+        if (string.IsNullOrWhiteSpace(v))
+            throw new InvalidOperationException($"'{name}' is required and must not be empty in config or CLI arguments.");
+        return v;
+    }
+
+    private static IReadOnlyList<DomainRule> MapDomains(List<DomainRuleDto>? dtos)
+    {
+        if (dtos is null) return [];
+        return dtos.Select((d, i) =>
+        {
+            if (string.IsNullOrWhiteSpace(d.Pattern))
+                throw new InvalidOperationException($"Domain rule at index {i} must have a non-empty 'pattern'.");
+            if (string.IsNullOrWhiteSpace(d.Domain))
+                throw new InvalidOperationException($"Domain rule at index {i} must have a non-empty 'domain'.");
+            return new DomainRule(d.Pattern, d.Domain, d.Label);
+        }).ToList().AsReadOnly();
     }
 
     private sealed class ConfigFile

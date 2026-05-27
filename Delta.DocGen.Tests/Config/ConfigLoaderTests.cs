@@ -94,4 +94,34 @@ public sealed class ConfigLoaderTests : IDisposable
         var act = () => ConfigLoader.Load("/nonexistent/docgen.config.json", new ConfigOverrides());
         act.Should().Throw<FileNotFoundException>();
     }
+
+    [Fact]
+    public void ThrowsIfRootMissingFromBothFileAndOverrides()
+    {
+        var json = """{ "output": "./out.json" }""";
+        var path = Path.Combine(_dir, "docgen.config.json");
+        File.WriteAllText(path, json);
+
+        var act = () => ConfigLoader.Load(path, new ConfigOverrides());
+        act.Should().Throw<InvalidOperationException>().WithMessage("*root*");
+    }
+
+    [Fact]
+    public void ThrowsIfDomainRuleHasBlankPattern()
+    {
+        var json = """
+            {
+              "root": "./tests",
+              "output": "./out.json",
+              "domains": [
+                { "pattern": "", "domain": "Auth", "label": "Auth" }
+              ]
+            }
+            """;
+        var path = Path.Combine(_dir, "docgen.config.json");
+        File.WriteAllText(path, json);
+
+        var act = () => ConfigLoader.Load(path, new ConfigOverrides());
+        act.Should().Throw<InvalidOperationException>().WithMessage("*pattern*");
+    }
 }
