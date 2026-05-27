@@ -36,4 +36,18 @@ public sealed class IdGeneratorTests
         r.Description.Should().BeEmpty();
         r.SuggestsNext.Should().BeEmpty();
     }
+
+    [Fact]
+    public void MissingUsageCountDefaultsToZero()
+    {
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "", "Auth")
+        };
+
+        var (records, _) = IdGenerator.Generate(
+            steps, new Dictionary<string, int>(), [], "General", NullDocGenLogger.Instance);
+
+        records[0].Used.Should().Be(0);
+    }
 }
