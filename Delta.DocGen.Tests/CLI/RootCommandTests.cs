@@ -66,4 +66,28 @@ public sealed class RootCommandTests
         exitCode.Should().Be(0);
         handlerCalled.Should().BeFalse();
     }
+
+    [Fact]
+    public void InvalidVerbosityValueFailsParsing()
+    {
+        var handlerCalled = false;
+        var cmd = CliRootCommand.Build(_ => { handlerCalled = true; return 0; });
+
+        var exitCode = cmd.Invoke(["--verbosity", "loud"]);
+
+        exitCode.Should().NotBe(0);
+        handlerCalled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UnknownOptionFailsParsing()
+    {
+        var handlerCalled = false;
+        var cmd = CliRootCommand.Build(_ => { handlerCalled = true; return 0; });
+
+        var exitCode = cmd.Invoke(["--frobnicate"]);
+
+        exitCode.Should().NotBe(0);
+        handlerCalled.Should().BeFalse();
+    }
 }

@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Delta.DocGen.Logging;
 
 namespace Delta.DocGen.CLI;
 
@@ -30,6 +31,12 @@ public static class CliRootCommand
         var verbosityOption = new Option<string?>(
             aliases: ["--verbosity"],
             description: "silent | normal | verbose (default: normal)");
+        verbosityOption.AddValidator(result =>
+        {
+            var v = result.GetValueForOption(verbosityOption);
+            if (v is not null && v is not (LogVerbosity.Silent or LogVerbosity.Normal or LogVerbosity.Verbose))
+                result.ErrorMessage = $"Invalid verbosity '{v}'. Expected: silent | normal | verbose.";
+        });
 
         var dryRunOption = new Option<bool>(
             aliases: ["--dry-run"],
