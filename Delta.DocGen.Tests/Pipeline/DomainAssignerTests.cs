@@ -85,4 +85,29 @@ public sealed class DomainAssignerTests
 
         result[0].Domain.Should().Be("Auth");
     }
+
+    [Fact]
+    public void EmptyStepListReturnsEmptyList()
+    {
+        var rules = new List<DomainRule> { new("Auth/**", "Auth", "Auth & Identity") };
+
+        var result = DomainAssigner.Assign([], rules, "General", NullDocGenLogger.Instance);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void EmptyRulesAssignsFallbackToAllSteps()
+    {
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, ""),
+            new(StepType.When,  "I click submit",  [], "Forms/FormSteps.cs", 5, "")
+        };
+
+        var result = DomainAssigner.Assign(steps, [], "General", NullDocGenLogger.Instance);
+
+        result.Should().HaveCount(2);
+        result.Should().AllSatisfy(s => s.Domain.Should().Be("General"));
+    }
 }
