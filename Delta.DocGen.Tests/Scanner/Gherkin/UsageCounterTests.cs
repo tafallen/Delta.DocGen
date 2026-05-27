@@ -78,4 +78,61 @@ public sealed class UsageCounterTests : IDisposable
         counts["I am logged in"].Should().Be(1);
         counts["I click the button"].Should().Be(0);
     }
+
+    [Fact]
+    public void MatchesIntPlaceholder()
+    {
+        var path = WriteFeatureFile("Features/Shop.feature", """
+            Feature: Shop
+
+              Scenario: Add items
+                Given I have 5 items
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I have {int} items", [], "Shop/ShopSteps.cs", 1, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I have {int} items"].Should().Be(1);
+    }
+
+    [Fact]
+    public void MatchesStringPlaceholder()
+    {
+        var path = WriteFeatureFile("Features/Auth.feature", """
+            Feature: Auth
+
+              Scenario: Login as admin
+                Given I am logged in as "admin"
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in as {string}", [], "Auth/AuthSteps.cs", 1, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I am logged in as {string}"].Should().Be(1);
+    }
+
+    [Fact]
+    public void MatchesDecimalPlaceholder()
+    {
+        var path = WriteFeatureFile("Features/Shop.feature", """
+            Feature: Shop
+
+              Scenario: Pricing
+                Given a product costs 9.99
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "a product costs {decimal}", [], "Shop/ShopSteps.cs", 1, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["a product costs {decimal}"].Should().Be(1);
+    }
 }
