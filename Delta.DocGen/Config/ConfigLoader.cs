@@ -32,7 +32,8 @@ public static class ConfigLoader
         var file = JsonSerializer.Deserialize<ConfigFile>(json, _options)
                    ?? throw new InvalidOperationException("Config file is empty or invalid JSON.");
 
-        var configDir = Path.GetDirectoryName(Path.GetFullPath(configPath))!;
+        var configDir = Path.GetDirectoryName(Path.GetFullPath(configPath))
+            ?? throw new InvalidOperationException($"Cannot determine directory for config path: {configPath}");
 
         var excludes = new List<string>(file.Exclude ?? []);
         excludes.AddRange(overrides.AdditionalExcludes);

@@ -44,7 +44,11 @@ public static class StepDefinitionExtractor
                     var line = attr.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
                     var source = method.ToString();
 
-                    var stepType = Enum.Parse<StepType>(name);
+                    if (!Enum.TryParse<StepType>(name, out var stepType))
+                    {
+                        logger.Warn($"[{name}] at {relativePath} has no matching StepType value — skipping.");
+                        continue;
+                    }
                     steps.Add(new RawStep(stepType, pattern, @params, relativePath, line, source));
                     logger.Verbose($"  [{name}] {pattern} at {relativePath}:{line}");
                 }
