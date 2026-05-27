@@ -64,4 +64,11 @@ public sealed class DiscovererTests : IDisposable
         result.CsFiles.Should().BeEmpty();
         result.FeatureFiles.Should().BeEmpty();
     }
+
+    [Fact]
+    public void ThrowsIfRootDoesNotExist()
+    {
+        var act = () => Discoverer.Discover("/nonexistent/path", excludes: []);
+        act.Should().Throw<DirectoryNotFoundException>().WithMessage("*does not exist*");
+    }
 }

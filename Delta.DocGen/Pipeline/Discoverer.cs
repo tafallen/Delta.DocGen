@@ -14,12 +14,16 @@ public static class Discoverer
     /// Walks <paramref name="root"/> and returns relative paths (forward-slash separated)
     /// for all .cs and .feature files not matched by any exclude glob.
     /// </summary>
-    public static DiscoveryResult Discover(string root, IReadOnlyList<string> excludes)
+    /// <exception cref="DirectoryNotFoundException">Thrown if <paramref name="root"/> does not exist.</exception>
+    public static DiscoveryResult Discover(string root, IReadOnlyList<string>? excludes)
     {
+        if (!Directory.Exists(root))
+            throw new DirectoryNotFoundException($"Root directory does not exist: {root}");
+
         var matcher = new Matcher();
         matcher.AddInclude("**/*.cs");
         matcher.AddInclude("**/*.feature");
-        foreach (var ex in excludes)
+        foreach (var ex in excludes ?? [])
             matcher.AddExclude(ex);
 
         var dir = new DirectoryInfoWrapper(new DirectoryInfo(root));
@@ -30,8 +34,8 @@ public static class Discoverer
 
         foreach (var match in matches.Files)
         {
-            // Normalise to forward slashes regardless of OS
-            var relative = match.Path.Replace(Path.DirectorySeparatorChar, '/');
+            // FileSystemGlobbing returns forward-slash paths; replace is a safety net for any future runtime variance
+            var relative = match.Path.Replace('\\', '/');
             if (relative.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
                 csFiles.Add(relative);
             else if (relative.EndsWith(".feature", StringComparison.OrdinalIgnoreCase))
