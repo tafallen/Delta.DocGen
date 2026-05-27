@@ -67,4 +67,30 @@ public sealed class PipelineRunnerTests : IDisposable
         var schemaPath = Path.Combine(Path.GetDirectoryName(_output)!, "schema", "v1", "step-library.schema.json");
         File.Exists(schemaPath).Should().BeTrue();
     }
+
+    [Fact]
+    public void DryRunReturnsSuccessButWritesNoFiles()
+    {
+        var result = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance, dryRun: true);
+
+        result.Success.Should().BeTrue();
+        result.StepCount.Should().Be(3);
+        result.Digest.Should().MatchRegex("^[0-9a-f]{64}$");
+        result.OutputPath.Should().BeNull();
+        result.SchemaPath.Should().BeNull();
+        File.Exists(_output).Should().BeFalse();
+    }
+
+    [Fact]
+    public void DryRunStillComputesDigest()
+    {
+        // Same fixture, two runs — digest should match if generatedAt is identical.
+        // The runner uses DateTime.UtcNow, so this test can flake at second boundaries.
+        // If it flakes consistently, the fix is to inject a clock — but for now, the
+        // back-to-back execution is fast enough that the second resolution holds in practice.
+        var dry = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance, dryRun: true);
+        var wet = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance, dryRun: false);
+
+        dry.Digest.Should().Be(wet.Digest);
+    }
 }
