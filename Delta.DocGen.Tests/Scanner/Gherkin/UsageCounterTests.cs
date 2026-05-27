@@ -135,4 +135,51 @@ public sealed class UsageCounterTests : IDisposable
 
         counts["a product costs {decimal}"].Should().Be(1);
     }
+
+    [Fact]
+    public void SameStepUsedInMultipleScenariosCumulatesCount()
+    {
+        var path = WriteFeatureFile("Features/Auth.feature", """
+            Feature: Auth
+
+              Scenario: First login
+                Given I am logged in
+
+              Scenario: Second login
+                Given I am logged in
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I am logged in"].Should().Be(2);
+    }
+
+    [Fact]
+    public void MultipleDistinctStepsInOneScenarioEachCountedOnce()
+    {
+        var path = WriteFeatureFile("Features/Auth.feature", """
+            Feature: Auth
+
+              Scenario: Login flow
+                Given I am on the login page
+                When I submit valid credentials
+                Then I should be redirected to the dashboard
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am on the login page",                 [], "Auth/AuthSteps.cs", 1,  ""),
+            new(StepType.When,  "I submit valid credentials",             [], "Auth/AuthSteps.cs", 5,  ""),
+            new(StepType.Then,  "I should be redirected to the dashboard",[], "Auth/AuthSteps.cs", 9,  "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I am on the login page"].Should().Be(1);
+        counts["I submit valid credentials"].Should().Be(1);
+        counts["I should be redirected to the dashboard"].Should().Be(1);
+    }
 }
