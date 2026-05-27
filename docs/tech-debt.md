@@ -74,8 +74,8 @@
 | 🔴 Before Story 7 | ~~2~~ 0 | ✅ Both resolved |
 | 🟠 Quick wins (Stories 1–7) | ~~10~~ ~~6~~ 0 | ✅ All resolved |
 | 🟠 Quick wins (Stories 8–10) | ~~6~~ 0 | ✅ All resolved (TD-C01, C02, C04, C05, C07, C08) |
-| 🟠 Quick wins (Stories 12–13) | 6 | TD-D01, D03, D04, D06, D07, D11 — to fix |
-| 🟡 Medium work | 5 + ~~2~~ 0 + 5 | TD-C09/C10 ✅; original 5 deferred; TD-D02/D05/D08/D12/D13 to fix (D12 documented) |
+| 🟠 Quick wins (Stories 12–13) | ~~6~~ 0 | ✅ All resolved (TD-D01, D03, D04, D06, D07, D11) |
+| 🟡 Medium work | 5 + ~~2~~ 0 + ~~5~~ 0 | TD-C09/C10 ✅; original 5 deferred; TD-D02/D05/D08/D13 ✅, TD-D12 documented (broken Reqnroll input — not fixed) |
 | 🟢 Deferred | 12 + 7 + 11 | Low-risk polish, nice-to-haves (incl. TD-D09, D10, D14..D23) |
 
 **Stories 8–10 review summary:** 17 items added (TD-C01–TD-C19). All 6 quick wins and both mediums (C09, C10) resolved. Two items from the initial review (canonical-on-disk and signature-subobject ordering) were dismissed after confirming the design spec mandates pretty-print on disk with re-canonicalisation by the verifier (developer-guide §7, line 316).
@@ -335,6 +335,29 @@ Canonical JSON is the input to signing. Any change to `JsonSerializerOptions` (a
 | TD-C19 | `IdGenerator.cs:18` | `seenIds` value (the existing pattern) is only used for the exception message — could be `HashSet<string>` if the message dropped it; minor
 
 ---
+
+## ✅ Phase 2d — Quick wins (Stories 12–13, all resolved)
+
+| ID | Resolution |
+|----|-----------|
+| TD-D01 | ✅ `CliRunner` rebuilds `ConsoleLogger` from `config.LogVerbosity` when `--verbosity` not passed |
+| TD-D03 | ✅ `SchemaConstants` class added; `PipelineRunner` references `SchemaConstants.{EnvelopeVersion, GeneratorVersion, SchemaRelativeRef, SchemaVersion}` |
+| TD-D04 | ✅ Schema written *before* envelope in Stage 8 |
+| TD-D06 | ✅ `System.CommandLine`'s built-in `--version` confirmed and pinned by test |
+| TD-D07 | ✅ `Func<DateTime>? clock` parameter added to `PipelineRunner.Run`; `DryRunStillComputesDigest` test uses fixed clock |
+| TD-D11 | ✅ `Delta.DocGen.CLI.RootCommand` renamed to `CliRootCommand`; alias dropped |
+
+## ✅ Phase 3c — Medium work (Stories 12–13, all resolved)
+
+| ID | Resolution |
+|----|-----------|
+| TD-D02 | ✅ `FailureCategory` enum added to `PipelineResult`; narrow catches map exceptions to `UserError` / `InternalError` |
+| TD-D05 | ✅ `ConsoleLogger.Warn` routes to `Console.Error`; `CliRunner` maps `FailureCategory` to exit codes (0/1/2) |
+| TD-D08 | ✅ `LogPhrases.UnmatchedStep` constant shared between `UsageCounter` and `PipelineRunner` |
+| TD-D12 | 📝 Documented: same-pattern-different-domain represents broken Reqnroll input (ambiguous-step error at runtime); tool behaviour matches the input |
+| TD-D13 | ✅ `PipelineRunner` emits Verbose during dry-run noting the `$schema` ref will not resolve on disk |
+
+### Detail — original items kept for traceability
 
 ## 🟠 Phase 2d — Quick wins (Stories 12–13)
 
