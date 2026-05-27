@@ -73,11 +73,11 @@
 |-------|-------|-------|
 | 🔴 Before Story 7 | ~~2~~ 0 | ✅ Both resolved |
 | 🟠 Quick wins (Stories 1–7) | ~~10~~ ~~6~~ 0 | ✅ All resolved |
-| 🟠 Quick wins (Stories 8–10) | 6 | TD-C01, C02, C04, C05, C07, C08 — fix before Story 11 |
-| 🟡 Medium work | 5 + 2 | Design improvements alongside Stories 8–10; +TD-C09 snapshot, +TD-C10 split |
+| 🟠 Quick wins (Stories 8–10) | ~~6~~ 0 | ✅ All resolved (TD-C01, C02, C04, C05, C07, C08) |
+| 🟡 Medium work | 5 + ~~2~~ 0 | TD-C09, TD-C10 ✅ resolved; original 5 deferred |
 | 🟢 Deferred | 12 + 7 | Low-risk polish, nice-to-haves |
 
-**Stories 8–10 review summary:** 17 items added (TD-C01–TD-C19). Two items from the initial review (canonical-on-disk and signature-subobject ordering) were dismissed after confirming the design spec mandates pretty-print on disk with re-canonicalisation by the verifier (developer-guide §7, line 316).
+**Stories 8–10 review summary:** 17 items added (TD-C01–TD-C19). All 6 quick wins and both mediums (C09, C10) resolved. Two items from the initial review (canonical-on-disk and signature-subobject ordering) were dismissed after confirming the design spec mandates pretty-print on disk with re-canonicalisation by the verifier (developer-guide §7, line 316).
 
 ---
 
@@ -229,9 +229,18 @@ All quick wins resolved. ✅ TD-B04 (Background steps not counted) is the only o
 
 ---
 
-## 🟠 Phase 2c — Quick wins (Stories 8–10)
+## ✅ Phase 2c — Quick wins (Stories 8–10, all resolved)
 
-### TD-C01 · Priority 18 — Canonical JSON whitespace test is too literal
+| ID | Resolution |
+|----|-----------|
+| TD-C01 | ✅ Test renamed `OutputContainsNoInsignificantWhitespace`; asserts on `": "`/`", "`/newlines and confirms space inside string values is preserved |
+| TD-C02 | ✅ Three ordering tests rewritten using `JsonNode.Parse` AST enumeration |
+| TD-C04 | ✅ `step.File.Replace('\\', '/')` applied before `matcher.Match(...)`; regression test added |
+| TD-C05 | ✅ `DomainPrefix` now logs a Warn naming the offending domain when prefix sanitises to empty |
+| TD-C07 | ✅ `PatternHash` applies `Normalize(NormalizationForm.FormC)` before lowercasing; NFC≡NFD test added |
+| TD-C08 | ✅ Empty `rules` list now emits one consolidated Warn instead of N per-step Warns |
+
+### TD-C01 · ✅ Resolved — Canonical JSON whitespace test was too literal
 **File:** `Delta.DocGen.Tests/Output/CanonicalJsonTests.cs:59-68`
 
 `OutputContainsNoWhitespace` asserts the JSON contains no space/`\n`/`\r` anywhere. Any string value containing a space (e.g. `"Auth & Identity"`) would fail it. The contract is "no insignificant whitespace between tokens", not "no whitespace at all". Test passes today only because the fixture uses single-word values.
@@ -285,9 +294,14 @@ When `rules` is empty, every step emits an unmatched-rule warning — potentiall
 
 ---
 
-## 🟡 Phase 3b — Medium work (Stories 8–10)
+## ✅ Phase 3b — Medium work (Stories 8–10, all resolved)
 
-### TD-C09 · Priority 15 — No snapshot test pins the canonical output bytes
+| ID | Resolution |
+|----|-----------|
+| TD-C09 | ✅ `CanonicalOutputForKnownEnvelopeIsByteStable` snapshot test added, pins the canonical form of a small fixed envelope byte-for-byte |
+| TD-C10 | ✅ `IdGenerator.Generate` split into `IdGenerator.AssignIds` (steps only) and new `DomainBuilder.Build` (domain records); tests moved to `DomainBuilderTests.cs` |
+
+### TD-C09 · ✅ Resolved — No snapshot test pinned the canonical output bytes
 **File:** `Delta.DocGen.Tests/Output/CanonicalJsonTests.cs`
 
 Canonical JSON is the input to signing. Any change to `JsonSerializerOptions` (a new converter, a default casing change, a runtime upgrade) could silently shift digests across every existing consumer with no test failure. There is no byte-for-byte regression test pinning the canonical form.

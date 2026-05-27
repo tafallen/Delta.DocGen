@@ -455,7 +455,7 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 1–10 | ✅ Complete, merged to master, pushed to GitHub |
 | 11–15 | ⬜ Not started |
 
-**Test count:** 88 passing (13 config, 9 discoverer, 16 extractor, 10 usage-counter, 7 domain-assigner, 7 id-generator, 5 canonical-json, 6 signer, 5 story-10-extras)
+**Test count:** 94 passing (Stories 1–10 + TD-C01..C10 debt fixes)
 
 ### Story-by-story status
 
