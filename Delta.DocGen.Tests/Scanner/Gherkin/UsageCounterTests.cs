@@ -182,4 +182,44 @@ public sealed class UsageCounterTests : IDisposable
         counts["I submit valid credentials"].Should().Be(1);
         counts["I should be redirected to the dashboard"].Should().Be(1);
     }
+
+    [Fact]
+    public void UnmatchedStepLogsWarning()
+    {
+        var logger = new CapturingDocGenLogger();
+        var path = WriteFeatureFile("Features/Unknown.feature", """
+            Feature: Unknown
+
+              Scenario: Mystery
+                Given something nobody has defined
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "")
+        };
+
+        UsageCounter.Count(steps, path, _root, logger);
+
+        logger.WarnMessages.Should().ContainSingle(m => m.Contains("something nobody has defined"));
+    }
+
+    [Fact]
+    public void MatchedStepDoesNotLogWarning()
+    {
+        var logger = new CapturingDocGenLogger();
+        var path = WriteFeatureFile("Features/Auth.feature", """
+            Feature: Auth
+
+              Scenario: Login
+                Given I am logged in
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "")
+        };
+
+        UsageCounter.Count(steps, path, _root, logger);
+
+        logger.WarnMessages.Should().BeEmpty();
+    }
 }
