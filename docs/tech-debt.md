@@ -1,7 +1,7 @@
 # Delta.DocGen — Technical Debt Register
 
-**Date:** 2026-05-27 (updated after Story 7 UsageCounter complete)  
-**Scope:** Stories 1–7 + all prior fixes  
+**Date:** 2026-05-27 (updated after Stories 8–10 complete: DomainAssigner, IdGenerator, CanonicalJson, Signer)  
+**Scope:** Stories 1–10 + all prior fixes  
 **Formula:** Priority = (Impact + Risk) × (6 − Effort) — higher = more urgent
 
 ---
@@ -72,9 +72,12 @@
 | Phase | Items | Theme |
 |-------|-------|-------|
 | 🔴 Before Story 7 | ~~2~~ 0 | ✅ Both resolved |
-| 🟠 Quick wins | ~~10~~ ~~6~~ 0 | ✅ All resolved |
-| 🟡 Medium work | 5 | Design improvements alongside Stories 8–10 |
-| 🟢 Deferred | 12 | Low-risk polish, nice-to-haves |
+| 🟠 Quick wins (Stories 1–7) | ~~10~~ ~~6~~ 0 | ✅ All resolved |
+| 🟠 Quick wins (Stories 8–10) | 6 | TD-C01, C02, C04, C05, C07, C08 — fix before Story 11 |
+| 🟡 Medium work | 5 + 2 | Design improvements alongside Stories 8–10; +TD-C09 snapshot, +TD-C10 split |
+| 🟢 Deferred | 12 + 7 | Low-risk polish, nice-to-haves |
+
+**Stories 8–10 review summary:** 17 items added (TD-C01–TD-C19). Two items from the initial review (canonical-on-disk and signature-subobject ordering) were dismissed after confirming the design spec mandates pretty-print on disk with re-canonicalisation by the verifier (developer-guide §7, line 316).
 
 ---
 
@@ -223,3 +226,95 @@ Address opportunistically when touching the relevant file.
 ## Recommended action before Story 8
 
 All quick wins resolved. ✅ TD-B04 (Background steps not counted) is the only open item below Priority 16 — address alongside Story 9.
+
+---
+
+## 🟠 Phase 2c — Quick wins (Stories 8–10)
+
+### TD-C01 · Priority 18 — Canonical JSON whitespace test is too literal
+**File:** `Delta.DocGen.Tests/Output/CanonicalJsonTests.cs:59-68`
+
+`OutputContainsNoWhitespace` asserts the JSON contains no space/`\n`/`\r` anywhere. Any string value containing a space (e.g. `"Auth & Identity"`) would fail it. The contract is "no insignificant whitespace between tokens", not "no whitespace at all". Test passes today only because the fixture uses single-word values.
+
+*Fix:* Replace literal `NotContain(" ")` with a structural check: parse the JSON, re-serialise unindented, compare to the canonical output. Or assert the JSON contains no `": "` / `", "` / `"{\n"` separators.
+
+---
+
+### TD-C02 · Priority 16 — Key-order tests use `IndexOf` instead of parsing
+**File:** `Delta.DocGen.Tests/Output/CanonicalJsonTests.cs:14-56`
+
+`KeysSortedAlphabeticallyAtTopLevel`, `NestedObjectKeysAreSorted`, and `ArrayElementOrderIsPreserved` assert ordering via substring `IndexOf`. Fragile to any value containing the key name. Tests pass only because fixtures are carefully chosen.
+
+*Fix:* Parse with `JsonNode.Parse`, enumerate keys/elements in document order, assert sequence equality.
+
+---
+
+### TD-C04 · Priority 16 — Windows backslash paths may not match forward-slash globs
+**File:** `Delta.DocGen/Pipeline/DomainAssigner.cs:24`
+
+`Matcher.Match(step.File).HasMatches` behaviour for Windows-style paths (`Auth\AuthSteps.cs`) against forward-slash glob patterns is undocumented. Today's tests use only forward-slash inputs, but the extractor doesn't normalise — on Windows a future change could silently break matching.
+
+*Fix:* Normalise `step.File.Replace('\\', '/')` before `matcher.Match(...)`. Add a regression test with a backslash file path.
+
+---
+
+### TD-C05 · Priority 12 — `DomainPrefix` silently returns `"unknown"` for non-ASCII domains
+**File:** `Delta.DocGen/Pipeline/IdGenerator.cs:53-63`
+
+A domain like `"認証"` or `"Café"` strips to `""` or `"caf"`, producing `unknown-xxxxxxxx` IDs. No warning, no signal to the operator that their config produced a meaningless prefix.
+
+*Fix:* If the sanitised prefix is empty (falls back to `"unknown"`), log a Warn naming the offending domain. Considered: detecting "significantly shortened" — but defining "significant" adds magic; empty is the bright line.
+
+---
+
+### TD-C07 · Priority 12 — Pattern hash lacks Unicode normalisation
+**File:** `Delta.DocGen/Pipeline/IdGenerator.cs:65-70`
+
+`pattern.Trim().ToLowerInvariant()` does not normalise Unicode form. Two visually identical patterns differing only by NFC vs NFD encoding produce different hashes and therefore different IDs; collision detection won't fire. Unlikely in practice but a latent footgun.
+
+*Fix:* Apply `.Normalize(NormalizationForm.FormC)` before lowercasing. Add a test asserting NFC and NFD forms of the same character produce the same ID.
+
+---
+
+### TD-C08 · Priority 10 — Empty rules list produces N warnings instead of one
+**File:** `Delta.DocGen/Pipeline/DomainAssigner.cs:33-39`
+
+When `rules` is empty, every step emits an unmatched-rule warning — potentially thousands of identical messages. A configuration error producing zero rules should surface as a single clear warning, not per-step noise.
+
+*Fix:* If `rules.Count == 0`, emit one Warn at the top of `Assign` and skip the per-step Warn loop. Keep per-step warns when rules exist but a specific step doesn't match.
+
+---
+
+## 🟡 Phase 3b — Medium work (Stories 8–10)
+
+### TD-C09 · Priority 15 — No snapshot test pins the canonical output bytes
+**File:** `Delta.DocGen.Tests/Output/CanonicalJsonTests.cs`
+
+Canonical JSON is the input to signing. Any change to `JsonSerializerOptions` (a new converter, a default casing change, a runtime upgrade) could silently shift digests across every existing consumer with no test failure. There is no byte-for-byte regression test pinning the canonical form.
+
+*Fix:* Add a snapshot test with a small fixed envelope (one domain, one step, all fields populated) and assert `CanonicalJson.Serialise(envelope)` equals a checked-in expected string. Acts as a load-bearing regression guard for signature stability.
+
+---
+
+### TD-C10 · Priority 15 — `IdGenerator.Generate` couples ID assignment and domain-record building
+**File:** `Delta.DocGen/Pipeline/IdGenerator.cs:11-48`
+
+`Generate` returns a tuple `(Steps, Domains)`. Domain-record building is a separate Stage 6 responsibility per the developer guide; bundling it with ID generation enlarges the test surface and prevents either piece from being reused independently.
+
+*Fix:* Split into `IdGenerator.AssignIds(steps, usageCounts, logger)` → `IReadOnlyList<StepRecord>` and a new `DomainBuilder.Build(steps, rules, fallbackDomain)` → `IReadOnlyList<DomainRecord>`. Pipeline runner composes them.
+
+---
+
+## 🟢 Phase 4b — Deferred (Stories 8–10)
+
+| ID | File | Issue |
+|----|------|-------|
+| TD-C11 | `CanonicalJson.cs:11-21` | `JsonSerializerOptions` instances are not explicitly `MakeReadOnly()` — .NET 8 freezes on first use anyway |
+| TD-C12 | `IdGenerator.cs:62` | Magic string `"unknown"` should be a named constant alongside `ConfigDefaults` |
+| TD-C13 | `IdGenerator.cs:69` | SHA-256 truncated to 8 hex chars (32 bits): ~50% collision risk at ~77k steps (birthday bound). No comment justifies the length |
+| TD-C14 | `DomainAssigner.cs:39` | Info log uses `"step(s)"` — minor wording inconsistency with other stages |
+| TD-C15 | `SignerTests.cs:81` | Uses fully-qualified `System.Security.Cryptography.SHA256` and `System.Text.Encoding.UTF8` instead of `using` directives |
+| TD-C16 | `IdGeneratorTests.cs` | No test for an empty domain string (would produce `"unknown"` prefix) |
+| TD-C17 | `CanonicalJsonTests.cs:13` | `Dispose` doesn't swallow `IOException` — flaky on Windows if a previous handle is held |
+| TD-C18 | `DomainAssigner.cs` | No XML doc comment on the public static class explaining "first match wins" |
+| TD-C19 | `IdGenerator.cs:18` | `seenIds` value (the existing pattern) is only used for the exception message — could be `HashSet<string>` if the message dropped it; minor
