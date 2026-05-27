@@ -1,10 +1,16 @@
+using Delta.DocGen.Model;
 using Delta.DocGen.Output.Serialiser;
 using FluentAssertions;
 
 namespace Delta.DocGen.Tests.Output;
 
-public sealed class CanonicalJsonTests
+public sealed class CanonicalJsonTests : IDisposable
 {
+    private readonly string _dir =
+        Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+    public CanonicalJsonTests() => Directory.CreateDirectory(_dir);
+    public void Dispose() => Directory.Delete(_dir, recursive: true);
     [Fact]
     public void KeysSortedAlphabeticallyAtTopLevel()
     {
@@ -60,4 +66,29 @@ public sealed class CanonicalJsonTests
         json.Should().NotContain("\n");
         json.Should().NotContain("\r");
     }
+
+    [Fact]
+    public void WriteCreatesFileWithPrettyPrintedJson()
+    {
+        var envelope = MakeEnvelope();
+        var outputPath = Path.Combine(_dir, "output", "step-library.json");
+
+        CanonicalJson.Write(envelope, outputPath);
+
+        File.Exists(outputPath).Should().BeTrue();
+        var content = File.ReadAllText(outputPath);
+        content.Should().Contain("\n");         // pretty-printed
+        content.Should().Contain("1.0.0");      // version present
+        content.Should().Contain("\"steps\"");  // steps key present
+    }
+
+    private static Envelope MakeEnvelope() => new(
+        Schema:           "./schema/v1/step-library.schema.json",
+        Version:          "1.0.0",
+        GeneratedAt:      "2026-05-27T09:00:00Z",
+        GeneratorVersion: "1.0.0",
+        Enriched:         false,
+        Domains:          [],
+        Steps:            [],
+        Signature:        null);
 }
