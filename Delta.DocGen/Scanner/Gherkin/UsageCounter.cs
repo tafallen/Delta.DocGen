@@ -21,7 +21,6 @@ public static class UsageCounter
         var fullPath = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
         var text = File.ReadAllText(fullPath, Encoding.UTF8);
 
-        // Deduplicate patterns; initialise all counts to 0
         var counts = steps
             .GroupBy(s => s.Pattern, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, _ => 0, StringComparer.Ordinal);
