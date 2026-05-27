@@ -1,6 +1,7 @@
 using Delta.DocGen.Config;
 using Delta.DocGen.Logging;
 using Delta.DocGen.Pipeline;
+using Delta.DocGen.Tests.Logging;
 using Delta.DocGen.Tests.Pipeline.Fixtures;
 using FluentAssertions;
 
@@ -107,5 +108,40 @@ public sealed class PipelineRunnerTests : IDisposable
         var result = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance);
 
         result.UnmatchedStepCount.Should().BeGreaterOrEqualTo(1);
+    }
+
+    [Fact]
+    public void PipelineCatchesIdCollisionAndReturnsFailedResult()
+    {
+        // Two [Given]s with identical pattern in the same domain → ID collision.
+        File.WriteAllText(Path.Combine(_root, "Auth", "DuplicateSteps.cs"), """
+            using Reqnroll;
+            namespace Demo;
+            public class DuplicateSteps
+            {
+                [Given("I am logged in")]
+                public void GivenDuplicate() { }
+            }
+            """);
+
+        var logger = new CapturingDocGenLogger();
+        var result = PipelineRunner.Run(BuildConfig(), logger);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+        result.ErrorMessage.Should().Contain("collision");
+        logger.ErrorMessages.Should().ContainSingle(m => m.Contains("collision"));
+        File.Exists(_output).Should().BeFalse();
+    }
+
+    [Fact]
+    public void RunOnNonExistentRootDirectoryReturnsFailedResult()
+    {
+        var config = BuildConfig() with { Root = Path.Combine(_workspace, "does-not-exist") };
+
+        var result = PipelineRunner.Run(config, NullDocGenLogger.Instance);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
     }
 }
