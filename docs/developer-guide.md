@@ -159,13 +159,13 @@ dotnet test Delta.DocGen.sln
 
 ### Development workflow
 
-The project uses Git worktrees for isolated feature development. Active feature branch: `feature/v1-implementation`, worktree at `.worktrees/feature-v1`.
+The project commits directly to `master`. There are no long-lived feature branches or worktrees.
 
 ```bash
-# Work in the feature worktree
-cd .worktrees/feature-v1
 dotnet build Delta.DocGen.sln
 dotnet test Delta.DocGen.sln
+git add <files>
+git commit -m "feat: ..."
 ```
 
 ---

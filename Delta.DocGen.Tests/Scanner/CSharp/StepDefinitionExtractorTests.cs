@@ -353,10 +353,38 @@ public sealed class StepDefinitionExtractorTests : IDisposable
     }
 
     [Fact]
+    public void InterleavedTableDoesNotConsumeIntPlaceholderSlot()
+    {
+        // [Given("{int} items")] + (int count, Table table, string body)
+        // Table is framework-injected — must not consume the {int} placeholder slot.
+        // After count takes slot 0 ({int}), no more placeholders remain, so body → DocString.
+        var path = WriteFile("Steps/InterleavedStep.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given("I have {int} items")]
+                public void GivenItems(int count, Table table, string body) { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        steps[0].Params.Should().HaveCount(3);
+        steps[0].Params[0].Name.Should().Be("count");
+        steps[0].Params[0].Type.Should().Be(ParamTypes.Int);
+        steps[0].Params[1].Name.Should().Be("table");
+        steps[0].Params[1].Type.Should().Be(ParamTypes.String);
+        steps[0].Params[2].Name.Should().Be("body");
+        steps[0].Params[2].Type.Should().Be(ParamTypes.DocString);
+    }
+
+    [Fact]
     public void ThrowsFileNotFoundForMissingFile()
     {
         var missing = "Steps.cs"; // directory (_root) exists, but file does not
         var act = () => StepDefinitionExtractor.Extract(missing, _root, NullDocGenLogger.Instance);
         act.Should().Throw<FileNotFoundException>();
     }
+
 }

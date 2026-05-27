@@ -130,6 +130,21 @@ public sealed class ConfigLoaderTests : IDisposable
         act.Should().Throw<FileNotFoundException>();
     }
 
+    [Theory]
+    [InlineData("root")]
+    [InlineData("output")]
+    public void ThrowsIfRequiredFieldIsWhitespaceOnly(string field)
+    {
+        var json = field == "root"
+            ? """{ "root": "   ", "output": "./out.json" }"""
+            : """{ "root": "./tests", "output": "   " }""";
+        var path = Path.Combine(_dir, "docgen.config.json");
+        File.WriteAllText(path, json);
+
+        var act = () => ConfigLoader.Load(path, new ConfigOverrides());
+        act.Should().Throw<InvalidOperationException>().WithMessage($"*{field}*");
+    }
+
     [Fact]
     public void ThrowsIfRootMissingFromBothFileAndOverrides()
     {
