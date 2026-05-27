@@ -45,6 +45,13 @@
 | TD-A03 | ✅ Theory test added asserting `InvalidOperationException` on whitespace-only `root` and `output` values |
 | TD-A04 | ✅ Test added verifying `Table` injection does not consume a placeholder slot; trailing `string` becomes `DocString` |
 | TD-A11 | ✅ Developer guide §4 updated: commits go directly to `master`; stale worktree instructions removed |
+| TD-A05 | ✅ `RestorePackagesWithLockFile` added to `Directory.Build.props`; lock files committed for both projects |
+| TD-A06 | ✅ `global.json` rollForward pinned to `latestPatch` |
+| TD-A07 | ✅ Test added for empty `.cs` file — Roslyn returns empty step list without exception |
+| TD-29  | ✅ Test added for mixed `[Given]` + `[When]` on same method — both produce correct `RawStep` entries |
+| TD-A09 | ✅ `DocGenConfig` defaults use `LogVerbosity.Normal` and `ConfigDefaults.FallbackDomain` constants; `ConfigLoader` updated to match |
+| TD-A10 | ✅ `Discoverer.excludes` is now non-nullable; null-coalescing guard and null-passing test removed |
+| TD-17  | ✅ `File.ReadAllText` now passes `Encoding.UTF8` explicitly |
 
 ---
 
@@ -53,7 +60,7 @@
 | Phase | Items | Theme |
 |-------|-------|-------|
 | 🔴 Before Story 7 | ~~2~~ 0 | ✅ Both resolved |
-| 🟠 Quick wins | ~~10~~ 7 | 3 resolved (TD-A03, A04, A11); 7 remain |
+| 🟠 Quick wins | ~~10~~ 0 | ✅ All resolved |
 | 🟡 Medium work | 4 | Design improvements alongside Stories 8–10 |
 | 🟢 Deferred | 12 | Low-risk polish, nice-to-haves |
 
@@ -73,22 +80,7 @@ Null-coalescing `InvalidOperationException` now thrown instead of `NullReference
 
 ---
 
-## 🟠 Phase 2 — Quick wins (Effort ≤ 1)
-
-Fix these alongside Story 7 as they take under an hour each.
-
-| ID | Priority | File | Problem | Fix |
-|----|----------|------|---------|-----|
-| **TD-A03** | 25 | `ConfigLoaderTests.cs` | No test for whitespace-only `root` or `output` values (e.g. `"root": "   "`). `ResolveRequired` uses `IsNullOrWhiteSpace` but this path is untested. | Add test asserting `InvalidOperationException` on whitespace values |
-| **TD-A04** | 25 | `StepDefinitionExtractorTests.cs` | No test for interleaved framework injection types: `[Given("{int} items")]` + `(int count, Table table, string body)`. Does `body` become DocString correctly? The logic is correct but untested. | Add test verifying `Table` doesn't consume a placeholder slot |
-| **TD-A05** | 25 | `Delta.DocGen.csproj` / `Delta.DocGen.Tests.csproj` | No `packages.lock.json` — transitive dependency versions are not pinned, making builds non-reproducible. A dep update between CI runs could silently change behaviour. | Add `<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>` to `Directory.Build.props` and commit the generated lock file |
-| **TD-A06** | 25 | `global.json` | `"rollForward": "latestMinor"` allows the .NET SDK to advance from `8.0.419` to any `8.0.x` automatically. A new SDK release may introduce compiler warnings that fail the build under `TreatWarningsAsErrors`. | Either pin to `"latestPatch"` or document an explicit suppression list in `Directory.Build.props` |
-| **TD-A07** | 20 | `StepDefinitionExtractorTests.cs` | No test for an empty `.cs` file. Roslyn parses permissively and should produce an empty step list, but it is untested. | Add test with an empty file asserting empty result and no exception |
-| **TD-29** | 20 | `StepDefinitionExtractorTests.cs` | No test for mixed `[Given]` + `[When]` on the same method (only `[Given]` + `[Given]` is tested in `ProducesOneRawStepPerAttribute`). Both should produce a `RawStep` each with correct types. | Add test with one method carrying both `[Given("...")]` and `[When("...")]` attributes |
-| **TD-A09** | 15 | `Delta.DocGen/Config/DocGenConfig.cs:8,10` | `LogVerbosity` defaults to `"normal"` (string literal) and `FallbackDomain` defaults to `"General"` (string literal). `LogVerbosity.Normal` constant exists. `"General"` has no constant (TD-03, still deferred). | Change `= "normal"` to `= LogVerbosity.Normal`; add a `Defaults` class or constant for `"General"` |
-| **TD-A10** | 15 | `Delta.DocGen/Pipeline/Discoverer.cs:19` | `excludes` parameter is `IReadOnlyList<string>?` (nullable). Callers must pass `null` or `[]`. The null-coalescing guard (`excludes ?? []`) makes it safe but hides intent bugs where callers accidentally pass `null` instead of `[]`. | Change to non-nullable `IReadOnlyList<string>` — remove null path, update the one test that passes `null` |
-| **TD-A11** | 15 | `docs/developer-guide.md:162–168` | The "Development workflow" section says "Active feature branch: `feature/v1-implementation`, worktree at `.worktrees/feature-v1`." This is stale — the project uses `master` directly. | Update §4 to describe the actual workflow: commit directly to `master`; remove or generalise the worktree reference |
-| **TD-17** | 15 | `StepDefinitionExtractor.cs` | `File.ReadAllText(fullPath)` uses the system default encoding (UTF-8 with BOM detection on Windows, UTF-8 on Linux). Step files with Windows-1252 encoding or unusual BOMs may parse incorrectly. | Specify `System.Text.Encoding.UTF8` explicitly: `File.ReadAllText(fullPath, Encoding.UTF8)` |
+## ✅ Phase 2 — Quick wins (all resolved)
 
 ---
 
