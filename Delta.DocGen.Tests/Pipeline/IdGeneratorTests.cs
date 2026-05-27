@@ -50,4 +50,31 @@ public sealed class IdGeneratorTests
 
         records[0].Used.Should().Be(0);
     }
+
+    [Fact]
+    public void IdMatchesDomainPrefixAndEightCharHexPattern()
+    {
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "", "Auth")
+        };
+
+        var (records, _) = IdGenerator.Generate(
+            steps, new Dictionary<string, int>(), [], "General", NullDocGenLogger.Instance);
+
+        records[0].Id.Should().MatchRegex(@"^auth-[0-9a-f]{8}$");
+    }
+
+    [Fact]
+    public void IdIsStableRegardlessOfFileOrLineNumber()
+    {
+        // ID is based on domain + pattern only — file moves and line changes must not affect it.
+        var step1 = new RawStep(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs",    1,  "", "Auth");
+        var step2 = new RawStep(StepType.Given, "I am logged in", [], "Auth/NewAuthSteps.cs", 99, "", "Auth");
+
+        var (r1, _) = IdGenerator.Generate([step1], new Dictionary<string, int>(), [], "General", NullDocGenLogger.Instance);
+        var (r2, _) = IdGenerator.Generate([step2], new Dictionary<string, int>(), [], "General", NullDocGenLogger.Instance);
+
+        r1[0].Id.Should().Be(r2[0].Id);
+    }
 }
