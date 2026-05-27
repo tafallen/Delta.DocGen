@@ -40,4 +40,30 @@ public sealed class SignerTests
 
         signed.Signature!.Digest.Should().MatchRegex("^[0-9a-f]+$");
     }
+
+    [Fact]
+    public void DigestIsDeterministic()
+    {
+        var envelope = MakeEnvelope();
+
+        var signed1 = Signer.Sign(envelope);
+        var signed2 = Signer.Sign(envelope);
+
+        signed1.Signature!.Digest.Should().Be(signed2.Signature!.Digest);
+    }
+
+    [Fact]
+    public void DigestChangesWhenStepsChange()
+    {
+        var step = new StepRecord(
+            "auth-a1b2c3d4", StepType.Given, "I am logged in", [],
+            "Auth/AuthSteps.cs", 1, "Auth", [], 0, "", "", []);
+        var emptyEnvelope = MakeEnvelope(steps: []);
+        var filledEnvelope = MakeEnvelope(steps: [step]);
+
+        var signedEmpty  = Signer.Sign(emptyEnvelope);
+        var signedFilled = Signer.Sign(filledEnvelope);
+
+        signedEmpty.Signature!.Digest.Should().NotBe(signedFilled.Signature!.Digest);
+    }
 }
