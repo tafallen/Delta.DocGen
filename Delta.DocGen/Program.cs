@@ -1,4 +1,4 @@
-using System.CommandLine;
-using DocGenRootCommand = Delta.DocGen.CLI.RootCommand;
+using System.CommandLine;  // required for InvokeAsync extension on RootCommand
+using Delta.DocGen.CLI;
 
-return await DocGenRootCommand.Build(Delta.DocGen.CLI.CliRunner.Run).InvokeAsync(args);
+return await CliRootCommand.Build(CliRunner.Run).InvokeAsync(args);

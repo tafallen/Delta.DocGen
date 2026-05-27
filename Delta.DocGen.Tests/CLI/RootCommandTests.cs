@@ -1,7 +1,6 @@
 using System.CommandLine;
 using Delta.DocGen.CLI;
 using FluentAssertions;
-using DocGenRootCommand = Delta.DocGen.CLI.RootCommand;
 
 namespace Delta.DocGen.Tests.CLI;
 
@@ -10,7 +9,7 @@ public sealed class RootCommandTests
     private static CliArgs Capture(params string[] args)
     {
         CliArgs? captured = null;
-        var cmd = DocGenRootCommand.Build(a => { captured = a; return 0; });
+        var cmd = CliRootCommand.Build(a => { captured = a; return 0; });
         cmd.Invoke(args);
         return captured ?? throw new InvalidOperationException("Handler was not invoked.");
     }
@@ -51,7 +50,7 @@ public sealed class RootCommandTests
     [Fact]
     public void HandlerReturnValueBecomesProcessExitCode()
     {
-        var cmd = DocGenRootCommand.Build(_ => 42);
+        var cmd = CliRootCommand.Build(_ => 42);
         var exitCode = cmd.Invoke([]);
         exitCode.Should().Be(42);
     }

@@ -2,9 +2,9 @@ using System.CommandLine;
 
 namespace Delta.DocGen.CLI;
 
-public static class RootCommand
+public static class CliRootCommand
 {
-    public static System.CommandLine.RootCommand Build(Func<CliArgs, int> handler)
+    public static RootCommand Build(Func<CliArgs, int> handler)
     {
         var configOption = new Option<string>(
             aliases: ["--config"],
@@ -35,7 +35,7 @@ public static class RootCommand
             aliases: ["--dry-run"],
             description: "Scan and report but do not write output file");
 
-        var cmd = new System.CommandLine.RootCommand(
+        var cmd = new RootCommand(
             "Delta.DocGen — generate a step library from a Reqnroll project");
         cmd.AddOption(configOption);
         cmd.AddOption(rootOption);
