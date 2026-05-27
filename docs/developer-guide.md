@@ -91,7 +91,7 @@ Delta.DocGen/
 │   │   └── IdGeneratorTests.cs                     ⬜ Story 9
 │   ├── Scanner/
 │   │   ├── CSharp/
-│   │   │   └── StepDefinitionExtractorTests.cs     ⬜ Story 6
+│   │   │   └── StepDefinitionExtractorTests.cs     ✅ done (11 tests)
 │   │   └── Gherkin/
 │   │       └── UsageCounterTests.cs                ⬜ Story 7
 │   └── Output/
