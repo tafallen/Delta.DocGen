@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using System.Text;
-using Delta.DocGen.Config;
 using Delta.DocGen.Logging;
 using Delta.DocGen.Model;
 
@@ -8,11 +7,9 @@ namespace Delta.DocGen.Pipeline;
 
 public static class IdGenerator
 {
-    public static (IReadOnlyList<StepRecord> Steps, IReadOnlyList<DomainRecord> Domains) Generate(
+    public static IReadOnlyList<StepRecord> AssignIds(
         IReadOnlyList<RawStep> steps,
         IReadOnlyDictionary<string, int> usageCounts,
-        IReadOnlyList<DomainRule> domainRules,
-        string fallbackDomain,
         IDocGenLogger logger)
     {
         var seenIds = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -20,7 +17,7 @@ public static class IdGenerator
 
         foreach (var step in steps)
         {
-            var id = BuildId(step.Domain, step.Pattern);
+            var id = BuildId(step.Domain, step.Pattern, logger);
             if (seenIds.TryGetValue(id, out var existingPattern))
                 throw new InvalidOperationException(
                     $"Step ID collision: '{id}' generated for both '{existingPattern}' and '{step.Pattern}'.");
@@ -43,14 +40,13 @@ public static class IdGenerator
         }
 
         logger.Info($"ID generation complete: {records.Count} step(s) processed.");
-        var domains = BuildDomains(steps, domainRules, fallbackDomain);
-        return (records.AsReadOnly(), domains);
+        return records.AsReadOnly();
     }
 
-    private static string BuildId(string domain, string pattern)
-        => $"{DomainPrefix(domain)}-{PatternHash(pattern)}";
+    private static string BuildId(string domain, string pattern, IDocGenLogger logger)
+        => $"{DomainPrefix(domain, logger)}-{PatternHash(pattern)}";
 
-    internal static string DomainPrefix(string domain)
+    internal static string DomainPrefix(string domain, IDocGenLogger? logger = null)
     {
         var sb = new StringBuilder();
         foreach (var ch in domain.ToLowerInvariant())
@@ -59,33 +55,18 @@ public static class IdGenerator
             else if (ch is ' ' or '-' or '_') sb.Append('-');
         }
         var result = sb.ToString().Trim('-');
-        return result.Length > 0 ? result : "unknown";
+        if (result.Length == 0)
+        {
+            logger?.Warn($"Domain '{domain}' produced an empty ID prefix after sanitisation; using 'unknown'.");
+            return "unknown";
+        }
+        return result;
     }
 
     internal static string PatternHash(string pattern)
     {
-        var normalized = pattern.Trim().ToLowerInvariant();
+        var normalized = pattern.Trim().Normalize(System.Text.NormalizationForm.FormC).ToLowerInvariant();
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
         return Convert.ToHexString(bytes)[..8].ToLowerInvariant();
-    }
-
-    private static IReadOnlyList<DomainRecord> BuildDomains(
-        IReadOnlyList<RawStep> steps,
-        IReadOnlyList<DomainRule> domainRules,
-        string fallbackDomain)
-    {
-        var labelLookup = domainRules
-            .GroupBy(r => r.Domain, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.First().Label, StringComparer.Ordinal);
-
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var result = new List<DomainRecord>();
-        foreach (var step in steps)
-        {
-            if (!seen.Add(step.Domain)) continue;
-            var label = labelLookup.TryGetValue(step.Domain, out var l) ? l : step.Domain;
-            result.Add(new DomainRecord(step.Domain, label));
-        }
-        return result.AsReadOnly();
     }
 }

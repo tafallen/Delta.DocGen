@@ -2,6 +2,7 @@ using Delta.DocGen.Config;
 using Delta.DocGen.Logging;
 using Delta.DocGen.Model;
 using Delta.DocGen.Pipeline;
+using Delta.DocGen.Tests.Logging;
 using FluentAssertions;
 
 namespace Delta.DocGen.Tests.Pipeline;
@@ -9,7 +10,7 @@ namespace Delta.DocGen.Tests.Pipeline;
 public sealed class IdGeneratorTests
 {
     [Fact]
-    public void GenerateMapsRawStepFieldsToStepRecord()
+    public void AssignIdsMapsRawStepFieldsToStepRecord()
     {
         var steps = new List<RawStep>
         {
@@ -18,9 +19,8 @@ public sealed class IdGeneratorTests
                 "Auth/AuthSteps.cs", 5, "source text", "Auth")
         };
         var usageCounts = new Dictionary<string, int> { ["I am logged in"] = 3 };
-        var rules = new List<DomainRule> { new("Auth/**", "Auth", "Auth & Identity") };
 
-        var (records, _) = IdGenerator.Generate(steps, usageCounts, rules, "General", NullDocGenLogger.Instance);
+        var records = IdGenerator.AssignIds(steps, usageCounts, NullDocGenLogger.Instance);
 
         records.Should().ContainSingle();
         var r = records[0];
@@ -45,8 +45,7 @@ public sealed class IdGeneratorTests
             new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "", "Auth")
         };
 
-        var (records, _) = IdGenerator.Generate(
-            steps, new Dictionary<string, int>(), [], "General", NullDocGenLogger.Instance);
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), NullDocGenLogger.Instance);
 
         records[0].Used.Should().Be(0);
     }
@@ -59,8 +58,7 @@ public sealed class IdGeneratorTests
             new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "", "Auth")
         };
 
-        var (records, _) = IdGenerator.Generate(
-            steps, new Dictionary<string, int>(), [], "General", NullDocGenLogger.Instance);
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), NullDocGenLogger.Instance);
 
         records[0].Id.Should().MatchRegex(@"^auth-[0-9a-f]{8}$");
     }
@@ -72,8 +70,8 @@ public sealed class IdGeneratorTests
         var step1 = new RawStep(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs",    1,  "", "Auth");
         var step2 = new RawStep(StepType.Given, "I am logged in", [], "Auth/NewAuthSteps.cs", 99, "", "Auth");
 
-        var (r1, _) = IdGenerator.Generate([step1], new Dictionary<string, int>(), [], "General", NullDocGenLogger.Instance);
-        var (r2, _) = IdGenerator.Generate([step2], new Dictionary<string, int>(), [], "General", NullDocGenLogger.Instance);
+        var r1 = IdGenerator.AssignIds([step1], new Dictionary<string, int>(), NullDocGenLogger.Instance);
+        var r2 = IdGenerator.AssignIds([step2], new Dictionary<string, int>(), NullDocGenLogger.Instance);
 
         r1[0].Id.Should().Be(r2[0].Id);
     }
@@ -88,50 +86,40 @@ public sealed class IdGeneratorTests
             new(StepType.When,  "I am logged in", [], "Auth/AuthSteps.cs", 10, "", "Auth"),
         };
 
-        var act = () => IdGenerator.Generate(
-            steps, new Dictionary<string, int>(), [], "General", NullDocGenLogger.Instance);
+        var act = () => IdGenerator.AssignIds(steps, new Dictionary<string, int>(), NullDocGenLogger.Instance);
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*collision*");
     }
 
     [Fact]
-    public void DomainRecordsAreDistinctInFirstOccurrenceOrder()
+    public void EmptyDomainPrefixLogsWarningAndUsesUnknown()
     {
+        var logger = new CapturingDocGenLogger();
         var steps = new List<RawStep>
         {
-            new(StepType.Given, "step one",   [], "Auth/AuthSteps.cs",  1, "", "Auth"),
-            new(StepType.Given, "step two",   [], "Forms/FormSteps.cs", 1, "", "Forms"),
-            new(StepType.Given, "step three", [], "Auth/AuthSteps2.cs", 5, "", "Auth"),  // Auth again
-        };
-        var rules = new List<DomainRule>
-        {
-            new("Auth/**",  "Auth",  "Auth & Identity"),
-            new("Forms/**", "Forms", "Forms & Input"),
+            new(StepType.Given, "I am logged in", [], "Other/OtherSteps.cs", 1, "", "認証")
         };
 
-        var (_, domains) = IdGenerator.Generate(
-            steps, new Dictionary<string, int>(), rules, "General", NullDocGenLogger.Instance);
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), logger);
 
-        domains.Should().HaveCount(2);
-        domains[0].Id.Should().Be("Auth");
-        domains[0].Label.Should().Be("Auth & Identity");
-        domains[1].Id.Should().Be("Forms");
-        domains[1].Label.Should().Be("Forms & Input");
+        records[0].Id.Should().StartWith("unknown-");
+        logger.WarnMessages.Should().ContainSingle(m => m.Contains("認証") && m.Contains("unknown"));
     }
 
     [Fact]
-    public void FallbackDomainUsesItsOwnIdAsLabel()
+    public void NfcAndNfdFormsOfSamePatternProduceSameId()
     {
-        var steps = new List<RawStep>
-        {
-            new(StepType.Given, "step one", [], "Other/OtherSteps.cs", 1, "", "General")
-        };
+        // "café" can be encoded as NFC (é = U+00E9) or NFD (e + U+0301).
+        // NFC normalisation in PatternHash ensures the IDs match.
+        var nfc = "café login";          // é precomposed
+        var nfd = "café login";          // e + combining acute
 
-        var (_, domains) = IdGenerator.Generate(
-            steps, new Dictionary<string, int>(), [], "General", NullDocGenLogger.Instance);
+        var stepNfc = new RawStep(StepType.Given, nfc, [], "Auth/AuthSteps.cs", 1, "", "Auth");
+        var stepNfd = new RawStep(StepType.Given, nfd, [], "Auth/AuthSteps.cs", 2, "", "Auth");
 
-        domains.Should().ContainSingle();
-        domains[0].Id.Should().Be("General");
-        domains[0].Label.Should().Be("General");
+        var r1 = IdGenerator.AssignIds([stepNfc], new Dictionary<string, int>(), NullDocGenLogger.Instance);
+        var r2 = IdGenerator.AssignIds([stepNfd], new Dictionary<string, int>(), NullDocGenLogger.Instance);
+
+        r1[0].Id.Should().Be(r2[0].Id);
     }
 }
