@@ -5,7 +5,7 @@ namespace Delta.DocGen.Model;
 /// <summary>Fully resolved step — all pipeline stages complete.</summary>
 public sealed record StepRecord(
     [property: JsonPropertyName("id")]          string Id,
-    [property: JsonPropertyName("type")]        string Type,
+    [property: JsonPropertyName("type")]        StepType Type,
     [property: JsonPropertyName("pattern")]     string Pattern,
     [property: JsonPropertyName("params")]      IReadOnlyList<ParamRecord> Params,
     [property: JsonPropertyName("file")]        string File,

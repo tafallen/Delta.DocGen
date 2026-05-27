@@ -37,7 +37,7 @@ public sealed class StepDefinitionExtractorTests : IDisposable
 
         steps.Should().ContainSingle();
         var step = steps[0];
-        step.Type.Should().Be("Given");
+        step.Type.Should().Be(StepType.Given);
         step.Pattern.Should().Be("I am logged in as {string}");
         step.File.Should().Be(path);
         step.Params.Should().ContainSingle();
@@ -64,9 +64,9 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
 
         steps.Should().HaveCount(2);
-        steps[0].Type.Should().Be("When");
+        steps[0].Type.Should().Be(StepType.When);
         steps[0].Params.Should().BeEmpty();
-        steps[1].Type.Should().Be("Then");
+        steps[1].Type.Should().Be(StepType.Then);
         steps[1].Params.Should().ContainSingle(p => p.Type == "string");
     }
 
@@ -191,7 +191,7 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
 
         steps.Should().HaveCount(3);
-        steps.Select(s => s.Type).Should().BeEquivalentTo(["Given", "When", "Then"]);
+        steps.Select(s => s.Type).Should().BeEquivalentTo([StepType.Given, StepType.When, StepType.Then]);
     }
 
     [Fact]
@@ -209,7 +209,7 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
 
         steps.Should().ContainSingle();
-        steps[0].Type.Should().Be("Given");
+        steps[0].Type.Should().Be(StepType.Given);
         steps[0].Pattern.Should().Be("I use reqnroll");
     }
 

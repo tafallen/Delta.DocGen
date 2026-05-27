@@ -44,7 +44,8 @@ public static class StepDefinitionExtractor
                     var line = attr.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
                     var source = method.ToString();
 
-                    steps.Add(new RawStep(name, pattern, @params, relativePath, line, source));
+                    var stepType = Enum.Parse<StepType>(name);
+                    steps.Add(new RawStep(stepType, pattern, @params, relativePath, line, source));
                     logger.Verbose($"  [{name}] {pattern} at {relativePath}:{line}");
                 }
             }
@@ -90,17 +91,19 @@ public static class StepDefinitionExtractor
             switch (csType)
             {
                 case "int":
-                    schemaType = "int";
+                    schemaType = ParamTypes.Int;
                     example = "0";
                     placeholderIndex++;
                     break;
                 case "decimal":
-                    schemaType = "decimal";
+                    schemaType = ParamTypes.Decimal;
                     example = "0.00";
                     placeholderIndex++;
                     break;
                 default:
-                    schemaType = placeholderIndex < placeholders.Count ? "string" : "DocString";
+                    schemaType = placeholderIndex < placeholders.Count
+                        ? ParamTypes.String
+                        : ParamTypes.DocString;
                     example = "";
                     placeholderIndex++;
                     break;
