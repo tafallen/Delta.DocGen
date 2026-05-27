@@ -10,9 +10,7 @@ public sealed class SchemaValidationTests
 {
     private static JsonSchema LoadSchema()
     {
-        // SchemaWriter doesn't exist yet (Task 3 creates it). Use the Envelope type to locate
-        // the assembly. The reference will be updated to typeof(SchemaWriter) in Task 3.
-        var assembly = typeof(Envelope).Assembly;
+        var assembly = typeof(Delta.DocGen.Output.Schema.SchemaWriter).Assembly;
         using var stream = assembly.GetManifestResourceStream(
             "Delta.DocGen.Output.Schema.Resources.step-library.v1.schema.json")!;
         return JsonSchema.FromStream(stream).AsTask().GetAwaiter().GetResult();
