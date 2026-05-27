@@ -452,10 +452,10 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 
 | Stories | Status |
 |---------|--------|
-| 1–13 | ✅ Complete, merged to master, pushed to GitHub |
-| 14–15 | ⬜ Not started |
+| 1–14 | ✅ Complete, merged to master, pushed to GitHub |
+| 15   | ⬜ Not started |
 
-**Test count:** 118 passing (Stories 1–13 + TD-C01..C10 debt fixes)
+**Test count:** 130 passing (Stories 1–14 + TD-C/D debt fixes)
 
 ### Story-by-story status
 
@@ -474,15 +474,18 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 11 | JSON Schema | `step-library.v1.schema.json`, `SchemaWriter` | ✅ |
 | 12 | Pipeline runner | `PipelineRunner` (orchestrates stages 1–8) | ✅ |
 | 13 | CLI wiring | `RootCommand.cs`, `Program.cs` | ✅ |
-| 14 | Full test suite | All tests green, zero warnings | ⬜ |
+| 14 | Full test suite | All tests green, zero warnings | ✅ |
 | 15 | End-to-end smoke test | Real fixture files, full run, output verified | ⬜ |
 
-### What's next — Story 14: Full test suite validation
+### What's next — Story 15: End-to-end smoke test
 
-The final two stories are validation, not new code:
+The final story validates the tool against a real (small) Reqnroll project:
 
-- **Story 14:** Run `dotnet test` cleanly with zero warnings, zero failures across the full repository. Run `dotnet build --no-incremental` to confirm `TreatWarningsAsErrors` still produces zero warnings. Address any remaining low-effort polish from `docs/tech-debt.md`.
-- **Story 15:** End-to-end smoke test using a real (small) Reqnroll project as the fixture. Confirm the generated JSON validates against the schema, the signature verifies, and the output matches expectations.
+- Create a fixture under `Delta.DocGen.Tests/EndToEnd/Fixtures/` with a representative project (2–4 step classes, 2–3 feature files, mixed Given/When/Then/Background)
+- Run the full CLI (`CliRunner.Run`) against the fixture
+- Assert the produced JSON validates against the embedded schema (re-use `SchemaValidationTests` patterns)
+- Re-canonicalise the envelope (strip signature) and confirm the SHA-256 matches `signature.digest`
+- Assert specific step IDs, usage counts, and domain assignments match expectations
 
 ---
 

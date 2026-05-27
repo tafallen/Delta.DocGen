@@ -75,8 +75,11 @@
 | 🟠 Quick wins (Stories 1–7) | ~~10~~ ~~6~~ 0 | ✅ All resolved |
 | 🟠 Quick wins (Stories 8–10) | ~~6~~ 0 | ✅ All resolved (TD-C01, C02, C04, C05, C07, C08) |
 | 🟠 Quick wins (Stories 12–13) | ~~6~~ 0 | ✅ All resolved (TD-D01, D03, D04, D06, D07, D11) |
-| 🟡 Medium work | 5 + ~~2~~ 0 + ~~5~~ 0 | TD-C09/C10 ✅; original 5 deferred; TD-D02/D05/D08/D13 ✅, TD-D12 documented (broken Reqnroll input — not fixed) |
-| 🟢 Deferred | 12 + 7 + 11 | Low-risk polish, nice-to-haves (incl. TD-D09, D10, D14..D23) |
+| 🟡 Medium work | 5 + ~~2~~ 0 + ~~5~~ 0 | TD-C09/C10 ✅; original 5 deferred; TD-D02/D05/D08/D13 ✅, TD-D12 documented |
+| 🟡 Story 14 polish | ~~7~~ 0 | ✅ TD-B04 (Background steps), TD-A14 (logger Clear), TD-D09/C18 (XML docs), TD-D16/D23 (CLI validation), TD-D17 (stronger exclude test) |
+| 🟢 Deferred | 12 + 7 + 9 | Low-risk polish (TD-D10, D14, D15, D18, D19, D20, D21, D22 + originals) |
+
+**Story 14 summary:** Background-step counting fixed (TD-B04 — only real correctness gap remaining), CLI `--verbosity` value validation + unknown-option pinning, XML doc comments on `PipelineRunner.Run` and `DomainAssigner`, `CapturingDocGenLogger.Clear()`, stronger exclude verification test. 130 tests passing; 0 warnings.
 
 **Stories 8–10 review summary:** 17 items added (TD-C01–TD-C19). All 6 quick wins and both mediums (C09, C10) resolved. Two items from the initial review (canonical-on-disk and signature-subobject ordering) were dismissed after confirming the design spec mandates pretty-print on disk with re-canonicalisation by the verifier (developer-guide §7, line 316).
 
