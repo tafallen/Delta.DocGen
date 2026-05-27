@@ -452,10 +452,10 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 
 | Stories | Status |
 |---------|--------|
-| 1–7 | ✅ Complete, merged to master, pushed to GitHub |
-| 8–15 | ⬜ Not started |
+| 1–8 | ✅ Complete, merged to master, pushed to GitHub |
+| 9–15 | ⬜ Not started |
 
-**Test count:** 58 passing (13 config, 9 discoverer, 16 extractor, 10 usage-counter)
+**Test count:** 70 passing (13 config, 9 discoverer, 16 extractor, 10 usage-counter, 7 domain-assigner, 5 story-7-extras)
 
 ### Story-by-story status
 
@@ -468,7 +468,7 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 5 | File discovery | `Discoverer`, `DiscoveryResult`, 9 tests | ✅ |
 | 6 | C# step extraction | `StepDefinitionExtractor` (Roslyn) + tests | ✅ |
 | 7 | Usage counting | `UsageCounter` (Gherkin) + tests | ✅ |
-| 8 | Domain assignment | `DomainAssigner` + tests | ⬜ |
+| 8 | Domain assignment | `DomainAssigner` + tests | ✅ |
 | 9 | ID generation | `IdGenerator` + tests | ⬜ |
 | 10 | Canonical JSON + signing | `CanonicalJson`, `Signer` + tests | ⬜ |
 | 11 | JSON Schema | `step-library.v1.schema.json`, `SchemaWriter` | ⬜ |
@@ -477,15 +477,17 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 14 | Full test suite | All tests green, zero warnings | ⬜ |
 | 15 | End-to-end smoke test | Real fixture files, full run, output verified | ⬜ |
 
-### What's next — Story 8: Domain assignment
+### What's next — Story 9: ID generation
 
-The next story implements `DomainAssigner`. Key points:
+The next story implements `IdGenerator`. Key points:
 
-- Input: `RawStep[]` (all steps from Stage 3)
-- Output: `RawStep[]` with `Domain` field populated (via `with` expression — `RawStep` is immutable)
-- Evaluates domain rules from `DocGenConfig.Domains` in declaration order; first match wins
-- Each rule's `pattern` is a glob matched against the step's relative `.cs` file path using `Microsoft.Extensions.FileSystemGlobbing`
-- Steps matching no rule → `config.FallbackDomain` + `logger.Warn`
+- Input: domain-assigned `RawStep[]` + `IReadOnlyDictionary<string, int>` usage counts + domain rules + fallback domain
+- Output: `(IReadOnlyList<StepRecord> Steps, IReadOnlyList<DomainRecord> Domains)`
+- ID format: `<domain-prefix>-<8-hex-chars>` where the hex is the first 8 chars of SHA-256 of `pattern.Trim().ToLowerInvariant()`
+- Domain prefix: domain ID lowercased, non-alphanumeric chars replaced with hyphens
+- Collisions cause a fatal `InvalidOperationException` with both conflicting patterns in the message
+- `DomainRecord` list: distinct domains in first-occurrence order; label from matching domain rule (or domain ID as label for the fallback domain)
+- `StepRecord` V1 defaults: `Tags = []`, `Description = ""`, `SuggestsNext = []`
 
 ---
 
