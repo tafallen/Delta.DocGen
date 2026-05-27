@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Project-specific properties; shared settings (Nullable, ImplicitUsings, TreatWarningsAsErrors, TargetFramework) are in Directory.Build.props -->
+    <OutputType>Exe</OutputType>
+    <AssemblyName>docgen</AssemblyName>
+    <RootNamespace>Delta.DocGen</RootNamespace>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Output\Schema\Resources\step-library.v1.schema.json"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Gherkin" Version="29.0.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.9.2" />
+    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="8.0.0" />
+    <!-- System.CommandLine beta: known to emit [Experimental] attrs on some APIs.
+         If TreatWarningsAsErrors causes build failures in CLI task, suppress the
+         specific warning code rather than disabling TreatWarningsAsErrors globally. -->
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+  </ItemGroup>
+</Project>
