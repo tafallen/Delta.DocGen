@@ -19,6 +19,8 @@ public static class ConfigLoader
         ReadCommentHandling = JsonCommentHandling.Skip,
     };
 
+    private static readonly HashSet<string> _validVerbosities = ["silent", "normal", "verbose"];
+
     public static DocGenConfig Load(string configPath, ConfigOverrides overrides)
     {
         if (!File.Exists(configPath))
@@ -28,14 +30,21 @@ public static class ConfigLoader
         var file = JsonSerializer.Deserialize<ConfigFile>(json, _options)
                    ?? throw new InvalidOperationException("Config file is empty or invalid JSON.");
 
+        var configDir = Path.GetDirectoryName(Path.GetFullPath(configPath))!;
+
         var excludes = new List<string>(file.Exclude ?? []);
         excludes.AddRange(overrides.AdditionalExcludes);
 
+        var verbosity = overrides.LogVerbosity ?? file.LogVerbosity ?? "normal";
+        if (!_validVerbosities.Contains(verbosity))
+            throw new InvalidOperationException(
+                $"Invalid logVerbosity '{verbosity}'. Valid values: silent, normal, verbose.");
+
         return new DocGenConfig
         {
-            Root           = ResolveRequired(overrides.Root,        file.Root,        "root"),
-            Output         = ResolveRequired(overrides.Output,      file.Output,      "output"),
-            LogVerbosity   = overrides.LogVerbosity ?? file.LogVerbosity ?? "normal",
+            Root           = Path.GetFullPath(ResolveRequired(overrides.Root,   file.Root,   "root"),   configDir),
+            Output         = Path.GetFullPath(ResolveRequired(overrides.Output, file.Output, "output"), configDir),
+            LogVerbosity   = verbosity,
             FallbackDomain = file.FallbackDomain ?? "General",
             Exclude        = excludes.AsReadOnly(),
             Domains        = MapDomains(file.Domains),
@@ -46,7 +55,8 @@ public static class ConfigLoader
     {
         var v = cliVal ?? fileVal;
         if (string.IsNullOrWhiteSpace(v))
-            throw new InvalidOperationException($"'{name}' is required and must not be empty in config or CLI arguments.");
+            throw new InvalidOperationException(
+                $"'{name}' is required and must not be empty in config or CLI arguments.");
         return v;
     }
 
@@ -56,10 +66,13 @@ public static class ConfigLoader
         return dtos.Select((d, i) =>
         {
             if (string.IsNullOrWhiteSpace(d.Pattern))
-                throw new InvalidOperationException($"Domain rule at index {i} must have a non-empty 'pattern'.");
+                throw new InvalidOperationException(
+                    $"Domain rule at index {i} must have a non-empty 'pattern'.");
             if (string.IsNullOrWhiteSpace(d.Domain))
-                throw new InvalidOperationException($"Domain rule at index {i} must have a non-empty 'domain'.");
-            return new DomainRule(d.Pattern, d.Domain, d.Label);
+                throw new InvalidOperationException(
+                    $"Domain rule at index {i} must have a non-empty 'domain'.");
+            var label = string.IsNullOrWhiteSpace(d.Label) ? d.Domain : d.Label;
+            return new DomainRule(d.Pattern, d.Domain, label);
         }).ToList().AsReadOnly();
     }
 
