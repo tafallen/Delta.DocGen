@@ -1,6 +1,7 @@
 using Delta.DocGen.Logging;
 using Delta.DocGen.Model;
 using Delta.DocGen.Scanner.CSharp;
+using Delta.DocGen.Tests.Logging;
 using FluentAssertions;
 
 namespace Delta.DocGen.Tests.Scanner.CSharp;
@@ -293,5 +294,69 @@ public sealed class StepDefinitionExtractorTests : IDisposable
 
         steps.Should().ContainSingle();
         steps[0].Params.Should().ContainSingle(p => p.Type == ParamTypes.String && p.Name == "table");
+    }
+
+    [Fact]
+    public void WarnsAndSkipsAttributeWithNoStringArgument()
+    {
+        var logger = new CapturingDocGenLogger();
+        var path = WriteFile("Steps/NoArgStep.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given]
+                public void GivenNoPattern() { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, logger);
+
+        steps.Should().BeEmpty();
+        logger.WarnMessages.Should().ContainSingle(m => m.Contains("no string argument"));
+    }
+
+    [Fact]
+    public void WarnsForUnrecognisedParamType()
+    {
+        var logger = new CapturingDocGenLogger();
+        var path = WriteFile("Steps/CustomTypeStep.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given("I have something")]
+                public void GivenSomething(MyCustomType custom) { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, logger);
+
+        steps.Should().ContainSingle();
+        logger.WarnMessages.Should().ContainSingle(m => m.Contains("MyCustomType"));
+    }
+
+    [Fact]
+    public void ExtractsSpecFlowQualifiedAttributeByName()
+    {
+        var path = WriteFile("Steps/SpecFlowQualifiedSteps.cs", """
+            public class MySteps
+            {
+                [TechTalk.SpecFlow.Given("I use specflow fully qualified")]
+                public void GivenSpecFlowQualified() { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        steps[0].Type.Should().Be(StepType.Given);
+        steps[0].Pattern.Should().Be("I use specflow fully qualified");
+    }
+
+    [Fact]
+    public void ThrowsFileNotFoundForMissingFile()
+    {
+        var missing = "Steps.cs"; // directory (_root) exists, but file does not
+        var act = () => StepDefinitionExtractor.Extract(missing, _root, NullDocGenLogger.Instance);
+        act.Should().Throw<FileNotFoundException>();
     }
 }

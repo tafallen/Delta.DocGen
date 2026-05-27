@@ -68,7 +68,8 @@ public sealed class DiscovererTests : IDisposable
     [Fact]
     public void ThrowsIfRootDoesNotExist()
     {
-        var act = () => Discoverer.Discover("/nonexistent/path", excludes: []);
+        var missing = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "root");
+        var act = () => Discoverer.Discover(missing, excludes: []);
         act.Should().Throw<DirectoryNotFoundException>().WithMessage("*does not exist*");
     }
 

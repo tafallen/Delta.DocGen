@@ -125,7 +125,8 @@ public sealed class ConfigLoaderTests : IDisposable
     [Fact]
     public void ThrowsIfConfigFileNotFound()
     {
-        var act = () => ConfigLoader.Load("/nonexistent/docgen.config.json", new ConfigOverrides());
+        var missing = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "docgen.config.json");
+        var act = () => ConfigLoader.Load(missing, new ConfigOverrides());
         act.Should().Throw<FileNotFoundException>();
     }
 
@@ -222,5 +223,23 @@ public sealed class ConfigLoaderTests : IDisposable
         var config = ConfigLoader.Load(path, new ConfigOverrides());
 
         config.FallbackDomain.Should().Be("General");
+    }
+
+    [Fact]
+    public void LoadsConfigWithJsonComments()
+    {
+        var json = """
+            {
+              // project root
+              "root": "./tests",
+              "output": "./out.json" // generated file
+            }
+            """;
+        var path = Path.Combine(_dir, "docgen.config.json");
+        File.WriteAllText(path, json);
+
+        var config = ConfigLoader.Load(path, new ConfigOverrides());
+
+        config.Root.Should().Be(Path.GetFullPath("./tests", _dir));
     }
 }
