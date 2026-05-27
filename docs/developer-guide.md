@@ -313,7 +313,7 @@ The usage dictionary is passed **directly to Stage 6** (IdGenerator), bypassing 
    - **Format:** no whitespace, no indentation.
 3. Compute SHA-256 over UTF-8 bytes of the canonical string.
 4. Encode as lowercase hex → set `signature.digest`, `signature.algorithm = "SHA-256"`.
-5. Write final file (pretty-printed for readability).
+5. Construct the complete `Envelope` (now including the populated `Signature` record) and serialise it as **standard pretty-printed JSON** (this is a separate serialisation from the canonical form — do not re-parse the canonical string). Write to the output file path.
 6. Write JSON Schema file alongside output.
 
 > The viewer must replicate this exact canonical form to verify signatures: include `$schema`, alphabetical key order at all nesting levels, no whitespace. Any deviation causes silent verification failure.
