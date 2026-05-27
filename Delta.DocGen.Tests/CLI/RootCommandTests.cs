@@ -54,4 +54,16 @@ public sealed class RootCommandTests
         var exitCode = cmd.Invoke([]);
         exitCode.Should().Be(42);
     }
+
+    [Fact]
+    public void VersionFlagExitsWithoutRunningHandler()
+    {
+        var handlerCalled = false;
+        var cmd = CliRootCommand.Build(_ => { handlerCalled = true; return 0; });
+
+        var exitCode = cmd.Invoke(["--version"]);
+
+        exitCode.Should().Be(0);
+        handlerCalled.Should().BeFalse();
+    }
 }

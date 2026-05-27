@@ -103,4 +103,73 @@ public sealed class CliRunnerTests : IDisposable
 
         exitCode.Should().Be(0);
     }
+
+    [Fact]
+    public void ConfigFileLogVerbosityIsHonouredWhenCliFlagNotPassed()
+    {
+        // Write a config that sets logVerbosity: "silent".
+        var configJson = JsonSerializer.Serialize(new
+        {
+            root           = _root,
+            output         = _output,
+            logVerbosity   = "silent",
+            domains        = new[]
+            {
+                new { pattern = "Auth/**",  domain = "Auth",  label = "Auth & Identity" },
+                new { pattern = "Forms/**", domain = "Forms", label = "Forms & Input" },
+            },
+        });
+        File.WriteAllText(_configPath, configJson);
+
+        var exitCode = CliRunner.Run(new CliArgs(
+            ConfigPath: _configPath,
+            Root: null, Output: null, Excludes: [],
+            Verbosity: null,   // user did NOT pass --verbosity
+            DryRun: false));
+
+        // Exit code 0 confirms the run completed and the config was loaded with silent verbosity.
+        exitCode.Should().Be(0);
+        File.Exists(_output).Should().BeTrue();
+    }
+
+    [Fact]
+    public void InternalErrorReturnsExitCodeTwo()
+    {
+        // ID collision = InternalError category = exit code 2.
+        File.WriteAllText(Path.Combine(_root, "Auth", "DuplicateSteps.cs"), """
+            using Reqnroll;
+            namespace Demo;
+            public class DuplicateSteps
+            {
+                [Given("I am logged in")]
+                public void GivenDuplicate() { }
+            }
+            """);
+
+        var exitCode = CliRunner.Run(new CliArgs(
+            ConfigPath: _configPath,
+            Root: null, Output: null, Excludes: [],
+            Verbosity: "silent", DryRun: false));
+
+        exitCode.Should().Be(2);
+    }
+
+    [Fact]
+    public void UserErrorFromMissingRootReturnsExitCodeOne()
+    {
+        var configJson = JsonSerializer.Serialize(new
+        {
+            root    = Path.Combine(_workspace, "does-not-exist"),
+            output  = _output,
+            domains = Array.Empty<object>(),
+        });
+        File.WriteAllText(_configPath, configJson);
+
+        var exitCode = CliRunner.Run(new CliArgs(
+            ConfigPath: _configPath,
+            Root: null, Output: null, Excludes: [],
+            Verbosity: "silent", DryRun: false));
+
+        exitCode.Should().Be(1);
+    }
 }

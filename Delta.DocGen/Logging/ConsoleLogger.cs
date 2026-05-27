@@ -43,7 +43,7 @@ public sealed class ConsoleLogger : IDocGenLogger
     {
         if (_silent) return;
         Console.ForegroundColor = ConsoleColor.Yellow;
-        try { Console.WriteLine($"[WARN]    {message}"); }
+        try { Console.Error.WriteLine($"[WARN]    {message}"); }
         finally { Console.ResetColor(); }
     }
 

@@ -27,7 +27,19 @@ public static class CliRunner
             return 1;
         }
 
+        // If the user didn't specify --verbosity on the CLI, switch to the level the
+        // config file resolved to (which may differ from the bootstrap ConsoleLogger).
+        if (args.Verbosity is null && config.LogVerbosity != LogVerbosity.Normal)
+            logger = new ConsoleLogger(config.LogVerbosity);
+
         var result = PipelineRunner.Run(config, logger, args.DryRun);
-        return result.Success ? 0 : 1;
+
+        if (result.Success) return 0;
+        return result.FailureCategory switch
+        {
+            FailureCategory.UserError     => 1,
+            FailureCategory.InternalError => 2,
+            _                             => 1,
+        };
     }
 }
