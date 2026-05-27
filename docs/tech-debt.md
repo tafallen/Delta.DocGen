@@ -1,8 +1,47 @@
 # Delta.DocGen — Technical Debt Register
 
-**Date:** 2026-05-27  
-**Scope:** Stories 1–6 (all completed code)  
+**Date:** 2026-05-27 (updated after TD-A01 + TD-A02 resolved)  
+**Scope:** Stories 1–6 + Phase 1–3 fixes + pre-Story-7 blockers  
 **Formula:** Priority = (Impact + Risk) × (6 − Effort) — higher = more urgent
+
+---
+
+## What changed since the last register
+
+**Phase 1–3 (21 items) fully resolved:**
+
+| ID | Resolution |
+|----|-----------|
+| TD-01 | ✅ `LogVerbosity` constants class created; `ConfigLoader` + `ConsoleLogger` use them |
+| TD-02 | ✅ `.ToLowerInvariant()` added to verbosity validation in `ConfigLoader` |
+| TD-05 | ✅ Thread-safety comment added to `ConsoleLogger` |
+| TD-07 | ✅ `Domain = ""` added to `RawStep`; doc comment updated |
+| TD-09 | ✅ `Envelope.GeneratedAt` doc comment added with Z-suffix and format guidance |
+| TD-10 | ✅ `StepType` enum created; `RawStep.Type` and `StepRecord.Type` now `StepType` |
+| TD-11 | ✅ `ParamTypes` constants class created; extractor uses them |
+| TD-12 | ✅ Explicit `Table`/`DataTable`/`ScenarioContext` arms added; `Warn` on unknown types |
+| TD-13 | ✅ `"StepDefinition"` added to `StepAttributeNames` + `StepType.StepDefinition` enum value |
+| TD-15 | ✅ `RawStep.Source` doc comment corrected: "full method text (attribute lists + signature + body)" |
+| TD-16 | ✅ `ExtractParams` rewritten with explicit `string` arm and `logger` parameter; `Table` arms don't consume placeholder index |
+| TD-18 | ✅ Discoverer glob comment explains why both `*.cs` and `**/*.cs` are needed |
+| TD-19 | ✅ Story 11 note added to module responsibilities table |
+| TD-20 | ✅ `System.CommandLine` note updated with version, `SYSLIB0050`, Story 13 |
+| TD-23 | ✅ Unix paths replaced with `Path.Combine(Path.GetTempPath(), Guid.NewGuid(), ...)` in all tests |
+| TD-24 | ✅ JSON comments test added to `ConfigLoaderTests` |
+| TD-26 | ✅ `TechTalk.SpecFlow.Given(...)` qualified attribute test added |
+| TD-27 | ✅ `CapturingDocGenLogger` created with all 6 `IDocGenLogger` method implementations |
+| TD-28 | ✅ File-not-found test added to `StepDefinitionExtractorTests` |
+| TD-32 | ✅ Stage 4 doc corrected: produces `IReadOnlyDictionary<string, int>`, not mutates `RawStep`; data flow diagram updated |
+| TD-33 | ✅ Canonical signing spec added: `$schema` included, alphabetical order, no whitespace, viewer warning added; Stage 7 two-phase serialisation clarified |
+
+**TD-34 resolved:** Developer guide now correctly states "roll forward: latestMinor" — no longer contradicts `global.json`.
+
+**Pre-Story-7 blockers resolved:**
+
+| ID | Resolution |
+|----|-----------|
+| TD-A01 | ✅ `Enum.Parse<StepType>` replaced with `Enum.TryParse`; warn + skip if name has no matching enum value |
+| TD-A02 | ✅ Null-suppressor `!` on `GetDirectoryName` replaced with null-coalescing `InvalidOperationException` |
 
 ---
 
@@ -10,103 +49,81 @@
 
 | Phase | Items | Theme |
 |-------|-------|-------|
-| 🔴 Before Story 7 | 3 | Design contradictions that will block or derail the next story |
-| 🟠 Quick wins | 10 | Effort-1 fixes with real risk payoff |
-| 🟡 Medium work | 8 | Effort-2 correctness and robustness improvements |
-| 🟢 Deferred | 15 | Low-risk polish, nice-to-haves |
+| 🔴 Before Story 7 | ~~2~~ 0 | ✅ Both resolved |
+| 🟠 Quick wins | 10 | Effort-1 fixes with real test and build payoff |
+| 🟡 Medium work | 4 | Design improvements alongside Stories 8–10 |
+| 🟢 Deferred | 12 | Low-risk polish, nice-to-haves |
 
 ---
 
-## 🔴 Phase 1 — Before Story 7 (blockers)
+## ✅ Phase 1 — Before Story 7 (resolved)
 
-These must be resolved before Story 7 begins or the implementor will make a wrong design choice.
-
-### TD-32 · Priority 35 — Stage 4 description contradicts immutable model
-**Category:** Documentation debt  
-**File:** `docs/developer-guide.md` §6 Stage 4  
-
-Stage 4 says "Increment `used` counter on the matching `RawStep`" — but `RawStep` is an immutable record. The data-flow diagram says Stage 4 outputs `Dictionary<pattern, count>`. Both are in the same document; one is wrong. A Story 7 implementor reading this will either attempt to mutate `RawStep` (breaking the architecture) or produce a dictionary and not know how it connects to Stage 5. **Decide and reconcile before Story 7 is specced.**
-
-*Suggested fix:* Update Stage 4 to say it produces `Dictionary<string, int>` (pattern → count). Stage 5 (DomainAssigner) receives `RawStep[]` + this dictionary and merges them when producing `StepRecord[]`.
+### TD-A01 · ✅ Resolved — `Enum.Parse<StepType>` replaced with `Enum.TryParse`
+**File:** `Delta.DocGen/Scanner/CSharp/StepDefinitionExtractor.cs`  
+Warn + skip if attribute name has no matching `StepType` value. Prevents crash if `StepAttributeNames` and the enum ever diverge.
 
 ---
 
-### TD-07 · Priority 28 — `RawStep` immutability vs. usage counting
-**Category:** Architecture debt  
-**File:** `Delta.DocGen/Model/RawStep.cs`  
-
-`RawStep` has no `Used` field. `StepRecord` has `Used`. The architecture must decide: does the usage counter operate on `RawStep` (requiring it to either become mutable, or be replaced with a new record) or does it produce a separate dictionary later merged into `StepRecord`? This is the same root cause as TD-32 but manifests in the model. **Both must be fixed together.**
+### TD-A02 · ✅ Resolved — Null suppression `!` on `GetDirectoryName` replaced
+**File:** `Delta.DocGen/Config/ConfigLoader.cs`  
+Null-coalescing `InvalidOperationException` now thrown instead of `NullReferenceException` on root-level config paths.
 
 ---
 
-### TD-33 · Priority 28 — Canonical JSON signing spec is incomplete
-**Category:** Documentation debt  
-**File:** `docs/developer-guide.md` §6 Stage 7; `docs/data-format-requirements.md`  
+## 🟠 Phase 2 — Quick wins (Effort ≤ 1)
 
-Stage 7 says "serialise without the `signature` field using canonical rules". It does not specify:
-- Whether the `$schema` field is included (its `$` prefix sorts before all letters — a developer might exclude it assuming it is metadata)
-- The exact field inclusion list
-
-The viewer must replicate the exact same canonical form to verify signatures. If generator and viewer make different assumptions, signature verification fails silently. **Story 10 (serialisation/signing) cannot be specced until this is explicit.**
-
-*Suggested fix:* Add to Stage 7: "The canonical input includes all Envelope fields except `signature`. The `$schema` field is included. Key order: alphabetical by JSON property name at every nesting level, `$` sorts before all letters."
-
----
-
-## 🟠 Phase 2 — Quick wins (Effort ≤ 1, Priority ≥ 20)
-
-Fix these alongside Story 7 as they each take under an hour.
+Fix these alongside Story 7 as they take under an hour each.
 
 | ID | Priority | File | Problem | Fix |
 |----|----------|------|---------|-----|
-| **TD-18** | 25 | `Discoverer.cs:26–29` | Duplicate glob patterns (`*.cs` + `**/*.cs`) — no comment explaining why both are needed; future dev will remove one and break root-level discovery | Add inline comment citing the FileSystemGlobbing behaviour |
-| **TD-01** | 24 | `ConfigLoader.cs` + `ConsoleLogger.cs` | Verbosity values duplicated as magic strings in 4 locations; no compile-time enforcement | Extract to `static class LogVerbosity` with string constants, or use an enum |
-| **TD-10** | 24 | `RawStep.cs`, `StepRecord.cs` | `Type` is `string`; only valid values are `"Given"`, `"When"`, `"Then"`; no compile-time guard | Introduce `enum StepType { Given, When, Then }` with `JsonStringEnumConverter` |
-| **TD-02** | 20 | `ConfigLoader.cs` | Verbosity values are case-sensitive but field names are case-insensitive — `"Normal"` fails with a confusing error | Add `.ToLowerInvariant()` before validation |
-| **TD-11** | 20 | `ParamRecord.cs` | `Type` is a free-form `string`; valid values (`"string"`, `"int"`, `"decimal"`, `"DocString"`) are undocumented in code; capitalisation inconsistency | Enum or `static class ParamTypes` with string constants |
-| **TD-19** | 20 | `Output/Schema/Resources/step-library.v1.schema.json` | Placeholder embedded resource compiles into assembly now; any code accessing it before Story 11 gets silently invalid schema | Note in Story 11 spec that this file must be replaced AND the embedded resource verified |
-| **TD-23** | 20 | `ConfigLoaderTests.cs:128`, `DiscovererTests.cs:71` | `/nonexistent/...` is a Unix-style path; unreliable on Windows CI | Replace with `Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "...")` |
-| **TD-24** | 20 | `ConfigLoaderTests.cs` | No test for config with JSON comments, despite `ReadCommentHandling.Skip` being set | Add one test with `// comment` in the config JSON |
-| **TD-26** | 20 | `StepDefinitionExtractorTests.cs` | No test for `[TechTalk.SpecFlow.Given("...")]` (fully qualified SpecFlow namespace) | Add one test mirroring `ExtractsReqnrollQualifiedAttributeByName` |
-| **TD-28** | 20 | `StepDefinitionExtractorTests.cs` | No test for `Extract` with a non-existent file path — unclear if `FileNotFoundException` propagation is intentional | Add test asserting the exception propagates; or add a guard with a friendlier message |
+| **TD-A03** | 25 | `ConfigLoaderTests.cs` | No test for whitespace-only `root` or `output` values (e.g. `"root": "   "`). `ResolveRequired` uses `IsNullOrWhiteSpace` but this path is untested. | Add test asserting `InvalidOperationException` on whitespace values |
+| **TD-A04** | 25 | `StepDefinitionExtractorTests.cs` | No test for interleaved framework injection types: `[Given("{int} items")]` + `(int count, Table table, string body)`. Does `body` become DocString correctly? The logic is correct but untested. | Add test verifying `Table` doesn't consume a placeholder slot |
+| **TD-A05** | 25 | `Delta.DocGen.csproj` / `Delta.DocGen.Tests.csproj` | No `packages.lock.json` — transitive dependency versions are not pinned, making builds non-reproducible. A dep update between CI runs could silently change behaviour. | Add `<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>` to `Directory.Build.props` and commit the generated lock file |
+| **TD-A06** | 25 | `global.json` | `"rollForward": "latestMinor"` allows the .NET SDK to advance from `8.0.419` to any `8.0.x` automatically. A new SDK release may introduce compiler warnings that fail the build under `TreatWarningsAsErrors`. | Either pin to `"latestPatch"` or document an explicit suppression list in `Directory.Build.props` |
+| **TD-A07** | 20 | `StepDefinitionExtractorTests.cs` | No test for an empty `.cs` file. Roslyn parses permissively and should produce an empty step list, but it is untested. | Add test with an empty file asserting empty result and no exception |
+| **TD-29** | 20 | `StepDefinitionExtractorTests.cs` | No test for mixed `[Given]` + `[When]` on the same method (only `[Given]` + `[Given]` is tested in `ProducesOneRawStepPerAttribute`). Both should produce a `RawStep` each with correct types. | Add test with one method carrying both `[Given("...")]` and `[When("...")]` attributes |
+| **TD-A09** | 15 | `Delta.DocGen/Config/DocGenConfig.cs:8,10` | `LogVerbosity` defaults to `"normal"` (string literal) and `FallbackDomain` defaults to `"General"` (string literal). `LogVerbosity.Normal` constant exists. `"General"` has no constant (TD-03, still deferred). | Change `= "normal"` to `= LogVerbosity.Normal`; add a `Defaults` class or constant for `"General"` |
+| **TD-A10** | 15 | `Delta.DocGen/Pipeline/Discoverer.cs:19` | `excludes` parameter is `IReadOnlyList<string>?` (nullable). Callers must pass `null` or `[]`. The null-coalescing guard (`excludes ?? []`) makes it safe but hides intent bugs where callers accidentally pass `null` instead of `[]`. | Change to non-nullable `IReadOnlyList<string>` — remove null path, update the one test that passes `null` |
+| **TD-A11** | 15 | `docs/developer-guide.md:162–168` | The "Development workflow" section says "Active feature branch: `feature/v1-implementation`, worktree at `.worktrees/feature-v1`." This is stale — the project uses `master` directly. | Update §4 to describe the actual workflow: commit directly to `master`; remove or generalise the worktree reference |
+| **TD-17** | 15 | `StepDefinitionExtractor.cs` | `File.ReadAllText(fullPath)` uses the system default encoding (UTF-8 with BOM detection on Windows, UTF-8 on Linux). Step files with Windows-1252 encoding or unusual BOMs may parse incorrectly. | Specify `System.Text.Encoding.UTF8` explicitly: `File.ReadAllText(fullPath, Encoding.UTF8)` |
 
 ---
 
-## 🟡 Phase 3 — Medium work (Effort 2, alongside Stories 8–10)
+## 🟡 Phase 3 — Medium work (alongside Stories 8–10)
 
-These require design decisions or more than one file to change.
+### TD-A12 · Priority 16 — Discoverer has no logging
+**File:** `Delta.DocGen/Pipeline/Discoverer.cs`
 
-### TD-12 · Priority 24 — `ExtractParams` silently misclassifies unknown C# types
-**File:** `StepDefinitionExtractor.cs:88–107`  
-The `switch` `default` arm handles both `string` (correctly) and any other type (`bool`, `Table`, `DataTable`, `ScenarioContext`, custom types) as `"string"` or `"DocString"`. A Reqnroll `Table` parameter is silently emitted as `"string"` with no warning. Add explicit arms for common SpecFlow/Reqnroll types and a `logger.Warn` for anything unrecognised.
+Stage 2 is completely silent. A caller receives a `DiscoveryResult` with no log output — the user has no visibility into how many files were found or how long discovery took. All other pipeline stages log at least an `Info` summary. The logger is not part of `Discover()`'s signature, which prevents adding logging without an API change.
 
-### TD-13 · Priority 24 — `[StepDefinition]` attribute silently ignored
-**File:** `StepDefinitionExtractor.cs:12–13`  
-Both SpecFlow and Reqnroll support `[StepDefinition]` as a "universal" step attribute (matches Given/When/Then). Steps using it are silently dropped from output. Add `"StepDefinition"` to `StepAttributeNames`; decide and document what `Type` value to emit for it.
+*Suggested fix:* Add `IDocGenLogger logger` parameter to `Discover()`. Log `Info` at completion: `"{csFiles.Count} C# file(s), {featureFiles.Count} feature file(s) discovered under {root}"`.
 
-### TD-16 · Priority 24 — `placeholderIndex` logic in `ExtractParams` is brittle
-**File:** `StepDefinitionExtractor.cs:79–106`  
-`placeholderIndex` is incremented in every case arm before the DocString check, meaning the count can be off for mixed-type signatures. Rewrite to explicitly pair parameters with placeholders by position, making the logic easier to reason about and test.
+---
 
-### TD-09 · Priority 16 — `GeneratedAt` typed as `string`
-**File:** `Envelope.cs`  
-`GeneratedAt` should be `DateTimeOffset` with a `JsonConverter` using `"O"` format. Currently any string can be stored, including malformed timestamps.
+### TD-A13 · Priority 16 — Unknown Cucumber placeholder types silently accepted
+**File:** `Delta.DocGen/Scanner/CSharp/StepDefinitionExtractor.cs:79`
 
-### TD-15 · Priority 16 — `Source` includes all attribute decorators, not just step attributes
-**File:** `StepDefinitionExtractor.cs:45`  
-`method.ToString()` captures the method including `[Obsolete]`, `[TestCategory]`, etc. alongside the step attribute. Developer guide example shows only the step attribute and method. Either the implementation or the documentation is wrong — decide and align them.
+`PlaceholderPattern` matches any `{...}` token. A pattern like `"I have {garbage} items"` is accepted without warning; the extractor infers that the `string` parameter maps to a placeholder named `{garbage}`, producing a `string`-typed `ParamRecord`. Valid Cucumber Expression types are `{int}`, `{decimal}`, `{float}`, `{string}`, `{word}`, `{bigdecimal}`. Unknown types will still be handled by Reqnroll (as long as a step binding converter exists), but the emitted schema type will be wrong.
 
-### TD-20 · Priority 18 — `System.CommandLine` is a 2022 pre-release beta
-**File:** `Delta.DocGen.csproj:21`  
-`2.0.0-beta4.22272.1` is four years old. The beta API emits `[Experimental]` attributes that will cause build failures with `TreatWarningsAsErrors`. Address before Story 13. The `.csproj` comment should at minimum name the warning code to suppress (`SYSLIB0050` or the specific one for the beta).
+*Suggested fix:* After extracting placeholders, warn for any `{...}` token whose inner name is not in the set of known Cucumber types.
 
-### TD-27 · Priority 16 — No way to test `logger.Warn` without a capturing logger
-**File:** `StepDefinitionExtractorTests.cs`  
-Warning-path behaviour (step attribute with no string argument) is untested. `NullDocGenLogger` swallows warnings silently. Add a `CapturingDocGenLogger` test helper (small class, 10 lines, no mocking framework) that stores log messages for assertion.
+---
 
-### TD-05 · Priority 16 — `ConsoleLogger` color operations are not thread-safe
-**File:** `ConsoleLogger.cs:40–50`  
-Safe now (single-threaded), but if parallel file scanning is ever introduced, interleaved `ForegroundColor` sets will produce garbled output. Add a `lock` or use ANSI escape codes to make it safe.
+### TD-14 · Priority 16 — `ExtractPattern` doesn't handle verbatim strings or constant references
+**File:** `StepDefinitionExtractor.cs` (original TD-14)
+
+`ExtractPattern` looks for a `StringLiteralExpression`. A pattern defined as `[Given(MyConstants.LoginPattern)]` (a constant reference) returns `null` from `ExtractPattern`, and the step is skipped with a misleading Warn: "has no string argument" — when in fact it has an argument, just not a literal. Similarly, `[Given(@"I have \d+ items")]` (verbatim string) works because Roslyn extracts verbatim string values correctly, but there's no test for it.
+
+*Suggested fix:* Distinguish "no argument" from "argument is not a string literal" in the Warn message. Optionally: attempt to resolve simple constant-field references via the syntax tree.
+
+---
+
+### TD-A14 · Priority 10 — `CapturingDocGenLogger` has no `Clear()` method
+**File:** `Delta.DocGen.Tests/Logging/CapturingDocGenLogger.cs`
+
+Tests that call `Extract()` multiple times on a single logger instance accumulate messages from all calls. There is no `Clear()` method to reset state between assertion phases. This forces tests to either create a new logger per call (slightly wordy) or assert on accumulated messages (fragile).
+
+*Suggested fix:* Add `public void Clear() { InfoMessages.Clear(); VerboseMessages.Clear(); WarnMessages.Clear(); ErrorMessages.Clear(); SummaryMessages.Clear(); }`
 
 ---
 
@@ -116,27 +133,24 @@ Address opportunistically when touching the relevant file.
 
 | ID | File | Issue |
 |----|------|-------|
-| TD-03 | `ConfigLoader.cs` | `"General"` fallback domain magic string — extract to a constant |
-| TD-04 | `ConfigLoader.cs` | Private DTO classes use `{ get; set; }` instead of `init` |
-| TD-06 | `ConsoleLogger.cs` | Inconsistent log prefix spacing (`[VERBOSE]` has 1 trailing space, others have 4) |
-| TD-08 | `StepRecord.cs` | `Used` typed as `int` — semantically non-negative; no validation |
-| TD-14 | `StepDefinitionExtractor.cs` | `ExtractPattern` doesn't handle verbatim strings or constant references; warning message is misleading |
-| TD-17 | `StepDefinitionExtractor.cs` | `File.ReadAllText` without explicit encoding — specify `Encoding.UTF8` |
-| TD-21 | `Delta.DocGen.csproj` | Roslyn version (4.9.2) skews ahead of .NET 8 SDK's bundled version |
-| TD-22 | `Delta.DocGen.Tests.csproj` | FluentAssertions v6 pin has no comment explaining why v7 was avoided (license) |
-| TD-25 | `ConfigLoaderTests.cs` | No test for zero-addition `AdditionalExcludes` path |
-| TD-29 | `StepDefinitionExtractorTests.cs` | No test for mixed `[Given]` + `[When]` on the same method |
+| TD-03 | `ConfigLoader.cs` | `"General"` fallback domain is a magic string — extract to a constant alongside `LogVerbosity` |
+| TD-04 | `ConfigLoader.cs` | Private `ConfigFile` and `DomainRuleDto` DTOs use `{ get; set; }` instead of `{ get; init; }` |
+| TD-06 | `ConsoleLogger.cs` | Inconsistent log prefix spacing: `[INFO]    ` 4 spaces, `[VERBOSE] ` 1 space, `[WARN]    ` 4 spaces |
+| TD-08 | `StepRecord.cs` | `Used` is typed as `int` — semantically non-negative; no validation at construction |
+| TD-21 | `Delta.DocGen.csproj` | Roslyn version (4.9.2) skews ahead of the .NET 8 SDK's bundled version; consider pinning to avoid API drift |
+| TD-22 | `Delta.DocGen.Tests.csproj` | FluentAssertions v6 pin has no comment explaining why v7 was avoided (licence change) |
+| TD-25 | `ConfigLoaderTests.cs` | No explicit test for the zero-addition `AdditionalExcludes` path (no CLI excludes, config has excludes) |
 | TD-30 | `Program.cs` | Placeholder prints `"Delta.DocGen v1"` with no hint it is not yet functional |
-| TD-31 | `developer-guide.md` | Layout table still shows `StepDefinitionExtractorTests.cs` as `⬜ Story 6` |
-| TD-34 | `global.json` | `rollForward: "latestMinor"` contradicts guide's claim of pinned SDK |
-| TD-35 | `ConfigLoader.cs` | Two-argument `Path.GetFullPath` use has no comment explaining why |
-| TD-36 | `DiscovererTests.cs:29` | `ContainSingle(predicate)` doesn't assert total count of 1 |
+| TD-35 | `ConfigLoader.cs` | Two-argument `Path.GetFullPath(path, basePath)` use has no comment explaining the base-path overload is needed |
+| TD-36 | `DiscovererTests.cs` | Several `ContainSingle(predicate)` calls don't assert total collection count is exactly 1 |
+| TD-A15 | `StepDefinitionExtractorTests.cs` | No test for verbatim string literal patterns (`@"I have \d+ items"`) |
+| TD-A16 | `StepDefinitionExtractorTests.cs` | No test for `[StepDefinition]` attribute without a namespace qualification |
 
 ---
 
 ## Recommended action before Story 7
 
-1. Resolve **TD-32** and **TD-07** together — decide the `RawStep` / usage count architecture and update the developer guide. This takes 30 minutes but prevents a full story's worth of rework.
-2. Resolve **TD-33** — write the exact canonical JSON spec into the developer guide before Story 10 is planned.
-3. Fix **TD-23** (cross-platform test paths) — 5 minutes; prevents spurious CI failures.
-4. Fix **TD-18** (document the duplicate glob pattern) — 2 minutes; prevents the next developer from "cleaning up" a load-bearing hack.
+1. ~~Resolve **TD-A01**~~ ✅ Done
+2. ~~Resolve **TD-A02**~~ ✅ Done
+3. Fix **TD-A03 and TD-A04** (test gaps) — 15 minutes total; the interleaved-Table case is the most likely real-world scenario for Story 7's usage counting work.
+4. Fix **TD-A11** (stale docs) — 2 minutes; removes confusing worktree instructions before any new contributor reads them.
