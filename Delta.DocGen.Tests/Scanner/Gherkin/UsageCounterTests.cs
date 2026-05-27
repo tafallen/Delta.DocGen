@@ -38,4 +38,44 @@ public sealed class UsageCounterTests : IDisposable
         counts.Should().ContainKey("I am logged in");
         counts["I am logged in"].Should().Be(0);
     }
+
+    [Fact]
+    public void MatchesLiteralStep()
+    {
+        var path = WriteFeatureFile("Features/Auth.feature", """
+            Feature: Auth
+
+              Scenario: Login
+                Given I am logged in
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I am logged in"].Should().Be(1);
+    }
+
+    [Fact]
+    public void StepNotUsedInFeatureFileHasCountZero()
+    {
+        var path = WriteFeatureFile("Features/Auth.feature", """
+            Feature: Auth
+
+              Scenario: Login
+                Given I am logged in
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, ""),
+            new(StepType.When,  "I click the button", [], "Auth/AuthSteps.cs", 5, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I am logged in"].Should().Be(1);
+        counts["I click the button"].Should().Be(0);
+    }
 }
