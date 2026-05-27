@@ -5,6 +5,11 @@ using Delta.DocGen.Model;
 
 namespace Delta.DocGen.Pipeline;
 
+/// <summary>
+/// Assigns each <see cref="Model.RawStep"/> a <c>Domain</c> by matching its <c>File</c> path
+/// against a list of glob rules. Evaluation is <b>first-match-wins</b> in declaration order;
+/// steps matching no rule receive the supplied fallback domain and a Warn.
+/// </summary>
 public static class DomainAssigner
 {
     public static IReadOnlyList<RawStep> Assign(

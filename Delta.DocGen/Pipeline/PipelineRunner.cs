@@ -31,6 +31,23 @@ public static class PipelineRunner
         public void Summary(string m) => _inner.Summary(m);
     }
 
+    /// <summary>
+    /// Runs pipeline stages 2–8 against a fully-resolved <see cref="DocGenConfig"/> and
+    /// returns a <see cref="PipelineResult"/>. Stage 1 (config load) is the caller's
+    /// responsibility — see <see cref="Config.ConfigLoader.Load"/>.
+    /// </summary>
+    /// <param name="config">Resolved configuration with absolute <c>Root</c> and <c>Output</c> paths.</param>
+    /// <param name="logger">Logger used by every stage; warning messages matching
+    /// <see cref="Logging.LogPhrases.UnmatchedStep"/> contribute to
+    /// <see cref="PipelineResult.UnmatchedStepCount"/>.</param>
+    /// <param name="dryRun">When <c>true</c>, runs every stage but does not write the
+    /// envelope or schema files.</param>
+    /// <param name="clock">Optional clock for deterministic <c>generatedAt</c> timestamps in tests.
+    /// Defaults to <see cref="DateTime.UtcNow"/>.</param>
+    /// <returns>A <see cref="PipelineResult"/>. On failure, <see cref="PipelineResult.Success"/> is
+    /// <c>false</c> and <see cref="PipelineResult.FailureCategory"/> indicates whether the cause was
+    /// user input (<see cref="FailureCategory.UserError"/>) or an internal invariant
+    /// (<see cref="FailureCategory.InternalError"/>).</returns>
     public static PipelineResult Run(
         DocGenConfig config,
         IDocGenLogger logger,
