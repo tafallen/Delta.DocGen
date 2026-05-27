@@ -1,7 +1,7 @@
 # Delta.DocGen — Technical Debt Register
 
-**Date:** 2026-05-27 (updated after TD-A01 + TD-A02 resolved)  
-**Scope:** Stories 1–6 + Phase 1–3 fixes + pre-Story-7 blockers  
+**Date:** 2026-05-27 (updated after Story 7 UsageCounter complete)  
+**Scope:** Stories 1–7 + all prior fixes  
 **Formula:** Priority = (Impact + Risk) × (6 − Effort) — higher = more urgent
 
 ---
@@ -36,6 +36,18 @@
 
 **TD-34 resolved:** Developer guide now correctly states "roll forward: latestMinor" — no longer contradicts `global.json`.
 
+**Story 7 (UsageCounter) — 7 items found; 6 quick wins resolved (TD-B01–TD-B03, TD-B05–TD-B07):**
+
+| ID | Status |
+|----|--------|
+| TD-B01 | ✅ Test added for Gherkin parse failure path |
+| TD-B02 | ✅ Test added for old-style regex patterns (`^`-prefixed) |
+| TD-B03 | ✅ Test added for `{word}` placeholder |
+| TD-B04 | 🟡 Background steps not counted (correctness gap) |
+| TD-B05 | ✅ `{string}` regex now matches both `"..."` and `'...'` |
+| TD-B06 | ✅ First-match-wins behaviour tested |
+| TD-B07 | ✅ `WriteFeatureFile` now passes `Encoding.UTF8` |
+
 **Pre-Story-7 blockers resolved:**
 
 | ID | Resolution |
@@ -60,8 +72,8 @@
 | Phase | Items | Theme |
 |-------|-------|-------|
 | 🔴 Before Story 7 | ~~2~~ 0 | ✅ Both resolved |
-| 🟠 Quick wins | ~~10~~ 0 | ✅ All resolved |
-| 🟡 Medium work | 4 | Design improvements alongside Stories 8–10 |
+| 🟠 Quick wins | ~~10~~ ~~6~~ 0 | ✅ All resolved |
+| 🟡 Medium work | 5 | Design improvements alongside Stories 8–10 |
 | 🟢 Deferred | 12 | Low-risk polish, nice-to-haves |
 
 ---
@@ -80,7 +92,63 @@ Null-coalescing `InvalidOperationException` now thrown instead of `NullReference
 
 ---
 
-## ✅ Phase 2 — Quick wins (all resolved)
+## ✅ Phase 2 — Quick wins (pre-Story-7, all resolved)
+
+---
+
+## ✅ Phase 2b — Quick wins (Story 7, all resolved)
+
+### TD-B01 · ✅ Resolved — Test added for Gherkin parse failure path
+**File:** `Delta.DocGen/Scanner/Gherkin/UsageCounter.cs:34–42`
+
+The `try/catch (ParserException)` path — warn + return zero-counts — has no test. A refactor could silently break it.
+
+*Fix:* Write malformed feature content, call `Count`, assert `WarnMessages` contains the parse error and all counts are 0.
+
+---
+
+### TD-B02 · ✅ Resolved — Test added for old-style regex patterns
+**File:** `Delta.DocGen/Scanner/Gherkin/UsageCounter.cs:92–93`
+
+`BuildMatchRegex` bypasses Cucumber Expression translation for patterns starting with `^`. Branch is entirely untested.
+
+*Fix:* One test with a `^`-prefixed pattern (e.g. `"^I have \\d+ items$"`) matching a feature file step.
+
+---
+
+### TD-B03 · ✅ Resolved — Test added for `{word}` placeholder
+**File:** `Delta.DocGen/Scanner/Gherkin/UsageCounter.cs:106`
+
+`{int}`, `{string}`, and `{decimal}` have dedicated tests; `{word}` does not.
+
+*Fix:* One test: pattern `"I select {word} option"`, step `"I select large option"`, expect count = 1.
+
+---
+
+### TD-B05 · ✅ Resolved — `{string}` regex now matches `"..."` and `'...'`
+**File:** `Delta.DocGen/Scanner/Gherkin/UsageCounter.cs:105`
+
+Cucumber Expressions spec: `{string}` matches `"..."` or `'...'`. Current regex `"[^"]*"` rejects single-quoted strings, producing a spurious unmatched-step warning.
+
+*Fix:* Replace with `(?:\"[^\"]*\"|'[^']*')`.
+
+---
+
+### TD-B06 · ✅ Resolved — First-match-wins behaviour tested
+**File:** `Delta.DocGen/Scanner/Gherkin/UsageCounter.cs:74–82`
+
+First-match-wins is the defined behaviour but has no test. A regression here (e.g. wrong break placement) would silently produce wrong counts.
+
+*Fix:* One test with two patterns both capable of matching the same step text; assert the first-defined pattern gets the count.
+
+---
+
+### TD-B07 · ✅ Resolved — `WriteFeatureFile` now passes `Encoding.UTF8`
+**File:** `Delta.DocGen.Tests/Scanner/Gherkin/UsageCounterTests.cs:21`
+
+Production code uses `Encoding.UTF8` explicitly (per TD-17). The test helper doesn't. Harmless in practice but inconsistent.
+
+*Fix:* Add `Encoding.UTF8` to `File.WriteAllText` in `WriteFeatureFile`.
 
 ---
 
@@ -110,6 +178,15 @@ Stage 2 is completely silent. A caller receives a `DiscoveryResult` with no log 
 `ExtractPattern` looks for a `StringLiteralExpression`. A pattern defined as `[Given(MyConstants.LoginPattern)]` (a constant reference) returns `null` from `ExtractPattern`, and the step is skipped with a misleading Warn: "has no string argument" — when in fact it has an argument, just not a literal. Similarly, `[Given(@"I have \d+ items")]` (verbatim string) works because Roslyn extracts verbatim string values correctly, but there's no test for it.
 
 *Suggested fix:* Distinguish "no argument" from "argument is not a string literal" in the Warn message. Optionally: attempt to resolve simple constant-field references via the syntax tree.
+
+---
+
+### TD-B04 · Priority 20 — Background steps are not counted
+**File:** `Delta.DocGen/Scanner/Gherkin/UsageCounter.cs:46–58`
+
+`Count` walks `Scenario` nodes only. Gherkin's `Background` is a sibling of `Scenario` in `feature.Children` — its steps run before every scenario but are stored separately in the AST. A step used only in a Background will show count 0, producing silently wrong usage data. Same gap applies to Background inside Rule blocks.
+
+*Fix:* Add a `child is Background bg` arm to the feature-children loop (and `ruleChild is Background` inside Rule). Walk `bg.Steps` the same way `MatchScenario` walks scenario steps.
 
 ---
 
@@ -143,6 +220,6 @@ Address opportunistically when touching the relevant file.
 
 ---
 
-## Recommended action before Story 7
+## Recommended action before Story 8
 
-All pre-Story-7 recommendations resolved. ✅
+All quick wins resolved. ✅ TD-B04 (Background steps not counted) is the only open item below Priority 16 — address alongside Story 9.
