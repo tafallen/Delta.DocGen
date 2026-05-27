@@ -338,6 +338,49 @@ public sealed class UsageCounterTests : IDisposable
     }
 
     [Fact]
+    public void BackgroundStepIsCounted()
+    {
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "")
+        };
+        var path = WriteFeatureFile("background.feature", """
+            Feature: Test
+              Background:
+                Given I am logged in
+
+              Scenario: First
+                When I do something
+            """);
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I am logged in"].Should().Be(1);
+    }
+
+    [Fact]
+    public void BackgroundInsideRuleIsCounted()
+    {
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "")
+        };
+        var path = WriteFeatureFile("rule-background.feature", """
+            Feature: Test
+              Rule: AuthRule
+                Background:
+                  Given I am logged in
+
+                Scenario: Sample
+                  When I do something
+            """);
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I am logged in"].Should().Be(1);
+    }
+
+    [Fact]
     public void FirstMatchingPatternWinsWhenMultiplePatternsCouldMatch()
     {
         // Both "I have {int} items" and "I have {word} items" could match "I have 5 items".

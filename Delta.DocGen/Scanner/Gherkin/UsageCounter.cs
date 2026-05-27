@@ -46,13 +46,17 @@ public static class UsageCounter
             foreach (var child in feature.Children)
             {
                 if (child is Scenario scenario)
-                    MatchScenario(scenario, counts, regexes, relativePath, logger);
+                    MatchSteps(scenario.Steps, counts, regexes, relativePath, logger);
+                else if (child is Background background)
+                    MatchSteps(background.Steps, counts, regexes, relativePath, logger);
                 else if (child is Rule rule)
                 {
                     foreach (var ruleChild in rule.Children)
                     {
                         if (ruleChild is Scenario ruleScenario)
-                            MatchScenario(ruleScenario, counts, regexes, relativePath, logger);
+                            MatchSteps(ruleScenario.Steps, counts, regexes, relativePath, logger);
+                        else if (ruleChild is Background ruleBackground)
+                            MatchSteps(ruleBackground.Steps, counts, regexes, relativePath, logger);
                     }
                 }
             }
@@ -62,14 +66,14 @@ public static class UsageCounter
         return counts;
     }
 
-    private static void MatchScenario(
-        Scenario scenario,
+    private static void MatchSteps(
+        IEnumerable<Step> steps,
         Dictionary<string, int> counts,
         Dictionary<string, Regex> regexes,
         string relativePath,
         IDocGenLogger logger)
     {
-        foreach (var step in scenario.Steps)
+        foreach (var step in steps)
         {
             var matched = false;
             foreach (var (pattern, regex) in regexes)
