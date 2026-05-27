@@ -18,7 +18,7 @@ public sealed class UsageCounterTests : IDisposable
     {
         var full = Path.Combine(_root, relativePath.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
-        File.WriteAllText(full, content);
+        File.WriteAllText(full, content, System.Text.Encoding.UTF8);
         return relativePath;
     }
 
@@ -262,5 +262,101 @@ public sealed class UsageCounterTests : IDisposable
         var act = () => UsageCounter.Count(steps, missing, _root, NullDocGenLogger.Instance);
 
         act.Should().Throw<FileNotFoundException>();
+    }
+
+    [Fact]
+    public void GherkinParseFailureLogsWarningAndReturnsZeroCounts()
+    {
+        var logger = new CapturingDocGenLogger();
+        var path = WriteFeatureFile("Features/Bad.feature", "this is not valid gherkin \x00");
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, logger);
+
+        logger.WarnMessages.Should().ContainSingle(m => m.Contains("Bad.feature"));
+        counts["I am logged in"].Should().Be(0);
+    }
+
+    [Fact]
+    public void OldStyleRegexPatternMatchesStep()
+    {
+        var path = WriteFeatureFile("Features/Shop.feature", """
+            Feature: Shop
+
+              Scenario: Add items
+                Given I have 5 items
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, @"^I have \d+ items$", [], "Shop/ShopSteps.cs", 1, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts[@"^I have \d+ items$"].Should().Be(1);
+    }
+
+    [Fact]
+    public void MatchesWordPlaceholder()
+    {
+        var path = WriteFeatureFile("Features/Shop.feature", """
+            Feature: Shop
+
+              Scenario: Select option
+                Given I select large option
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I select {word} option", [], "Shop/ShopSteps.cs", 1, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I select {word} option"].Should().Be(1);
+    }
+
+    [Fact]
+    public void MatchesStringPlaceholderWithSingleQuotes()
+    {
+        var path = WriteFeatureFile("Features/Auth.feature", """
+            Feature: Auth
+
+              Scenario: Login as admin
+                Given I am logged in as 'admin'
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in as {string}", [], "Auth/AuthSteps.cs", 1, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I am logged in as {string}"].Should().Be(1);
+    }
+
+    [Fact]
+    public void FirstMatchingPatternWinsWhenMultiplePatternsCouldMatch()
+    {
+        // Both "I have {int} items" and "I have {word} items" could match "I have 5 items".
+        // First-match-wins: whichever pattern appears first in the steps list gets the count.
+        var path = WriteFeatureFile("Features/Shop.feature", """
+            Feature: Shop
+
+              Scenario: Add items
+                Given I have 5 items
+            """);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I have {int} items",  [], "Shop/ShopSteps.cs", 1, ""),
+            new(StepType.Given, "I have {word} items", [], "Shop/ShopSteps.cs", 5, "")
+        };
+
+        var counts = UsageCounter.Count(steps, path, _root, NullDocGenLogger.Instance);
+
+        counts["I have {int} items"].Should().Be(1);
+        counts["I have {word} items"].Should().Be(0);
     }
 }

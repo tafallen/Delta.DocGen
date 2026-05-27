@@ -103,7 +103,7 @@ public static class UsageCounter
                 "decimal"    => @"[\d.]+",
                 "float"      => @"[\d.]+",
                 "bigdecimal" => @"[\d.]+",
-                "string"     => "\"[^\"]*\"",
+                "string"     => "(?:\"[^\"]*\"|'[^']*')",
                 "word"       => @"\S+",
                 _            => @".+",
             });
