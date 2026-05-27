@@ -1,7 +1,7 @@
 # Delta.DocGen — Developer Guide
 
 **Last updated:** 2026-05-27  
-**Implementation status:** Stories 1–11 complete (11 of 15 tasks done)
+**Implementation status:** Stories 1–12 complete (12 of 15 tasks done)
 
 ---
 
@@ -452,10 +452,10 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 
 | Stories | Status |
 |---------|--------|
-| 1–11 | ✅ Complete, merged to master, pushed to GitHub |
-| 12–15 | ⬜ Not started |
+| 1–12 | ✅ Complete, merged to master, pushed to GitHub |
+| 13–15 | ⬜ Not started |
 
-**Test count:** 102 passing (Stories 1–11 + TD-C01..C10 debt fixes)
+**Test count:** 110 passing (Stories 1–12 + TD-C01..C10 debt fixes)
 
 ### Story-by-story status
 
@@ -472,20 +472,18 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 9 | ID generation | `IdGenerator` + tests | ✅ |
 | 10 | Canonical JSON + signing | `CanonicalJson`, `Signer` + tests | ✅ |
 | 11 | JSON Schema | `step-library.v1.schema.json`, `SchemaWriter` | ✅ |
-| 12 | Pipeline runner | `PipelineRunner` (orchestrates stages 1–8) | ⬜ |
+| 12 | Pipeline runner | `PipelineRunner` (orchestrates stages 1–8) | ✅ |
 | 13 | CLI wiring | `RootCommand.cs`, `Program.cs` | ⬜ |
 | 14 | Full test suite | All tests green, zero warnings | ⬜ |
 | 15 | End-to-end smoke test | Real fixture files, full run, output verified | ⬜ |
 
-### What's next — Story 12: Pipeline runner
+### What's next — Story 13: CLI wiring
 
-The next story implements `PipelineRunner`, orchestrating stages 1–8 end-to-end. Key points:
+The next story wires the CLI:
 
-- Input: a fully-loaded `DocGenConfig` and an `IDocGenLogger`
-- Output: `PipelineResult` record summarising step count, domain count, output path, digest, elapsed time, unmatched-step count
-- Sequence: Discoverer → StepDefinitionExtractor (over all `.cs` files) → UsageCounter (over all `.feature` files) → DomainAssigner → IdGenerator + DomainBuilder → CanonicalJson + Signer → CanonicalJson.Write + SchemaWriter.Write → summary log
-- Honours `--dry-run`: runs all stages but skips the two final `Write` calls
-- Catches and logs fatal pipeline exceptions (e.g. ID collisions); returns a failed `PipelineResult`
+- `Delta.DocGen/CLI/RootCommand.cs` builds a `System.CommandLine` root command with options: `--config`, `--root`, `--output`, `--exclude` (repeatable), `--verbosity`, `--dry-run`
+- `Program.cs` parses args, calls `ConfigLoader.Load(...)` with the resolved overrides, instantiates a `ConsoleLogger`, calls `PipelineRunner.Run(...)`, and exits with code 0 on success, 1 on failure
+- The CLI does NOT itself contain pipeline logic — it is a thin adapter
 
 ---
 
