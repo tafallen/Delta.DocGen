@@ -82,7 +82,7 @@ public static class UsageCounter
                 }
             }
             if (!matched)
-                logger.Warn($"  Unmatched step in {relativePath}: \"{step.Text}\"");
+                logger.Warn($"  {LogPhrases.UnmatchedStep} {relativePath}: \"{step.Text}\"");
         }
     }
 

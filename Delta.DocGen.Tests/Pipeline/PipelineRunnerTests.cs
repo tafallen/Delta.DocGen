@@ -85,12 +85,9 @@ public sealed class PipelineRunnerTests : IDisposable
     [Fact]
     public void DryRunStillComputesDigest()
     {
-        // Same fixture, two runs — digest should match if generatedAt is identical.
-        // The runner uses DateTime.UtcNow, so this test can flake at second boundaries.
-        // If it flakes consistently, the fix is to inject a clock — but for now, the
-        // back-to-back execution is fast enough that the second resolution holds in practice.
-        var dry = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance, dryRun: true);
-        var wet = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance, dryRun: false);
+        Func<DateTime> fixedClock = () => new DateTime(2026, 5, 27, 9, 0, 0, DateTimeKind.Utc);
+        var dry = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance, dryRun: true, clock: fixedClock);
+        var wet = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance, dryRun: false, clock: fixedClock);
 
         dry.Digest.Should().Be(wet.Digest);
     }
@@ -154,5 +151,53 @@ public sealed class PipelineRunnerTests : IDisposable
 
         logger.SummaryMessages.Should().ContainSingle(m =>
             m.Contains("3 step") && m.Contains("2 domain") && m.Contains("2 C#") && m.Contains("1 feature"));
+    }
+
+    [Fact]
+    public void UserErrorFromMissingRootMapsToUserErrorCategory()
+    {
+        var config = BuildConfig() with { Root = Path.Combine(_workspace, "does-not-exist") };
+
+        var result = PipelineRunner.Run(config, NullDocGenLogger.Instance);
+
+        result.Success.Should().BeFalse();
+        result.FailureCategory.Should().Be(FailureCategory.UserError);
+    }
+
+    [Fact]
+    public void InternalErrorFromIdCollisionMapsToInternalErrorCategory()
+    {
+        File.WriteAllText(Path.Combine(_root, "Auth", "DuplicateSteps.cs"), """
+            using Reqnroll;
+            namespace Demo;
+            public class DuplicateSteps
+            {
+                [Given("I am logged in")]
+                public void GivenDuplicate() { }
+            }
+            """);
+
+        var result = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance);
+
+        result.Success.Should().BeFalse();
+        result.FailureCategory.Should().Be(FailureCategory.InternalError);
+    }
+
+    [Fact]
+    public void SuccessfulRunHasNoFailureCategory()
+    {
+        var result = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance);
+
+        result.FailureCategory.Should().Be(FailureCategory.None);
+    }
+
+    [Fact]
+    public void DryRunEmitsVerboseAboutUnresolvedSchemaReference()
+    {
+        var logger = new CapturingDocGenLogger();
+
+        PipelineRunner.Run(BuildConfig(), logger, dryRun: true);
+
+        logger.VerboseMessages.Should().ContainSingle(m => m.Contains("$schema") && m.Contains("Dry-run"));
     }
 }

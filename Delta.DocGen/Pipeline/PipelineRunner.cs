@@ -11,14 +11,10 @@ namespace Delta.DocGen.Pipeline;
 
 public static class PipelineRunner
 {
-    private const string SchemaRelativeRef = "./schema/v1/step-library.schema.json";
-    private const string EnvelopeVersion   = "1.0.0";
-    private const string GeneratorVersion  = "1.0.0";
-
     private sealed class UnmatchedCountingLogger : IDocGenLogger
     {
         private readonly IDocGenLogger _inner;
-        private const string MatchPhrase = "Unmatched step in";
+        private const string MatchPhrase = LogPhrases.UnmatchedStep;
         public int Count { get; private set; }
 
         public UnmatchedCountingLogger(IDocGenLogger inner) => _inner = inner;
@@ -35,9 +31,14 @@ public static class PipelineRunner
         public void Summary(string m) => _inner.Summary(m);
     }
 
-    public static PipelineResult Run(DocGenConfig config, IDocGenLogger logger, bool dryRun = false)
+    public static PipelineResult Run(
+        DocGenConfig config,
+        IDocGenLogger logger,
+        bool dryRun = false,
+        Func<DateTime>? clock = null)
     {
         var stopwatch = Stopwatch.StartNew();
+        var nowFn = clock ?? (() => DateTime.UtcNow);
         try
         {
             var unmatchedCounter = new UnmatchedCountingLogger(logger);
@@ -72,10 +73,10 @@ public static class PipelineRunner
 
             // Stage 7: build + sign envelope
             var envelope = new Envelope(
-                Schema:           SchemaRelativeRef,
-                Version:          EnvelopeVersion,
-                GeneratedAt:      DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                GeneratorVersion: GeneratorVersion,
+                Schema:           SchemaConstants.SchemaRelativeRef,
+                Version:          SchemaConstants.EnvelopeVersion,
+                GeneratedAt:      nowFn().ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                GeneratorVersion: SchemaConstants.GeneratorVersion,
                 Enriched:         false,
                 Domains:          domainRecords,
                 Steps:            stepRecords,
@@ -87,13 +88,16 @@ public static class PipelineRunner
             string? schemaPath = null;
             if (!dryRun)
             {
-                CanonicalJson.Write(signed, config.Output);
-                outputPath = config.Output;
                 var outputDir = Path.GetDirectoryName(config.Output)
                     ?? throw new InvalidOperationException(
                         $"Cannot determine output directory from '{config.Output}'.");
-                schemaPath = SchemaWriter.Write(outputDir, unmatchedCounter);
+                schemaPath = SchemaWriter.Write(outputDir, logger);  // schema first
+                CanonicalJson.Write(signed, config.Output);          // then envelope
+                outputPath = config.Output;
             }
+
+            if (dryRun)
+                logger.Verbose($"Dry-run: $schema reference '{SchemaConstants.SchemaRelativeRef}' will not be resolvable on disk.");
 
             stopwatch.Stop();
             var result = new PipelineResult(
@@ -107,7 +111,8 @@ public static class PipelineRunner
                 SchemaPath:         schemaPath,
                 Digest:             signed.Signature?.Digest,
                 ElapsedMs:          stopwatch.ElapsedMilliseconds,
-                ErrorMessage:       null);
+                ErrorMessage:       null,
+                FailureCategory:    FailureCategory.None);
 
             logger.Summary(
                 $"Pipeline complete: {result.StepCount} step(s), {result.DomainCount} domain(s), " +
@@ -115,14 +120,28 @@ public static class PipelineRunner
                 $"elapsed {result.ElapsedMs}ms.");
             return result;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is DirectoryNotFoundException or FileNotFoundException or System.Text.Json.JsonException)
         {
-            stopwatch.Stop();
-            logger.Error($"Pipeline failed: {ex.Message}");
-            return new PipelineResult(
-                Success: false, StepCount: 0, DomainCount: 0, CsFileCount: 0, FeatureFileCount: 0,
-                UnmatchedStepCount: 0, OutputPath: null, SchemaPath: null, Digest: null,
-                ElapsedMs: stopwatch.ElapsedMilliseconds, ErrorMessage: ex.Message);
+            return BuildFailedResult(stopwatch, logger, ex.Message, FailureCategory.UserError);
         }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException)
+        {
+            return BuildFailedResult(stopwatch, logger, ex.Message, FailureCategory.InternalError);
+        }
+    }
+
+    private static PipelineResult BuildFailedResult(
+        Stopwatch stopwatch,
+        IDocGenLogger logger,
+        string message,
+        FailureCategory category)
+    {
+        if (stopwatch.IsRunning) stopwatch.Stop();
+        logger.Error($"Pipeline failed: {message}");
+        return new PipelineResult(
+            Success: false, StepCount: 0, DomainCount: 0, CsFileCount: 0, FeatureFileCount: 0,
+            UnmatchedStepCount: 0, OutputPath: null, SchemaPath: null, Digest: null,
+            ElapsedMs: stopwatch.ElapsedMilliseconds, ErrorMessage: message,
+            FailureCategory: category);
     }
 }
