@@ -452,10 +452,10 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 
 | Stories | Status |
 |---------|--------|
-| 1–5 | ✅ Complete, merged to master, pushed to GitHub |
-| 6–15 | ⬜ Not started |
+| 1–7 | ✅ Complete, merged to master, pushed to GitHub |
+| 8–15 | ⬜ Not started |
 
-**Test count:** 33 passing (13 config, 9 discoverer, 11 extractor)
+**Test count:** 58 passing (13 config, 9 discoverer, 16 extractor, 10 usage-counter)
 
 ### Story-by-story status
 
@@ -467,7 +467,7 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 4 | Configuration | `DocGenConfig`, `DomainRule`, `ConfigLoader`, 13 tests | ✅ |
 | 5 | File discovery | `Discoverer`, `DiscoveryResult`, 9 tests | ✅ |
 | 6 | C# step extraction | `StepDefinitionExtractor` (Roslyn) + tests | ✅ |
-| 7 | Usage counting | `UsageCounter` (Gherkin) + tests | ⬜ |
+| 7 | Usage counting | `UsageCounter` (Gherkin) + tests | ✅ |
 | 8 | Domain assignment | `DomainAssigner` + tests | ⬜ |
 | 9 | ID generation | `IdGenerator` + tests | ⬜ |
 | 10 | Canonical JSON + signing | `CanonicalJson`, `Signer` + tests | ⬜ |
@@ -477,17 +477,15 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 14 | Full test suite | All tests green, zero warnings | ⬜ |
 | 15 | End-to-end smoke test | Real fixture files, full run, output verified | ⬜ |
 
-### What's next — Story 7: Feature file usage counting
+### What's next — Story 8: Domain assignment
 
-The next story implements `UsageCounter` using the Gherkin library. Key points:
+The next story implements `DomainAssigner`. Key points:
 
-- Input: a `.feature` file path (relative) + the absolute root path + the list of `RawStep` records from Stage 3
-- Output: the same `RawStep` list with `Used` counts incremented
-- Uses the official `Gherkin` NuGet package (already in project)
-- Parses each `.feature` file, walks every step line in every scenario
-- Matches step text against extracted patterns using regex (Cucumber Expressions → regex)
-- Increments `used` counter on the matching `RawStep`
-- Unmatched step lines → warning log
+- Input: `RawStep[]` (all steps from Stage 3)
+- Output: `RawStep[]` with `Domain` field populated (via `with` expression — `RawStep` is immutable)
+- Evaluates domain rules from `DocGenConfig.Domains` in declaration order; first match wins
+- Each rule's `pattern` is a glob matched against the step's relative `.cs` file path using `Microsoft.Extensions.FileSystemGlobbing`
+- Steps matching no rule → `config.FallbackDomain` + `logger.Warn`
 
 ---
 
