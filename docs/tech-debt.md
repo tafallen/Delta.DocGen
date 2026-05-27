@@ -1,7 +1,7 @@
 # Delta.DocGen — Technical Debt Register
 
-**Date:** 2026-05-27 (updated after Stories 8–10 complete: DomainAssigner, IdGenerator, CanonicalJson, Signer)  
-**Scope:** Stories 1–10 + all prior fixes  
+**Date:** 2026-05-27 (updated after Stories 12–13 review: PipelineRunner, CLI)  
+**Scope:** Stories 1–13 + all prior fixes  
 **Formula:** Priority = (Impact + Risk) × (6 − Effort) — higher = more urgent
 
 ---
@@ -74,8 +74,9 @@
 | 🔴 Before Story 7 | ~~2~~ 0 | ✅ Both resolved |
 | 🟠 Quick wins (Stories 1–7) | ~~10~~ ~~6~~ 0 | ✅ All resolved |
 | 🟠 Quick wins (Stories 8–10) | ~~6~~ 0 | ✅ All resolved (TD-C01, C02, C04, C05, C07, C08) |
-| 🟡 Medium work | 5 + ~~2~~ 0 | TD-C09, TD-C10 ✅ resolved; original 5 deferred |
-| 🟢 Deferred | 12 + 7 | Low-risk polish, nice-to-haves |
+| 🟠 Quick wins (Stories 12–13) | 6 | TD-D01, D03, D04, D06, D07, D11 — to fix |
+| 🟡 Medium work | 5 + ~~2~~ 0 + 5 | TD-C09/C10 ✅; original 5 deferred; TD-D02/D05/D08/D12/D13 to fix (D12 documented) |
+| 🟢 Deferred | 12 + 7 + 11 | Low-risk polish, nice-to-haves (incl. TD-D09, D10, D14..D23) |
 
 **Stories 8–10 review summary:** 17 items added (TD-C01–TD-C19). All 6 quick wins and both mediums (C09, C10) resolved. Two items from the initial review (canonical-on-disk and signature-subobject ordering) were dismissed after confirming the design spec mandates pretty-print on disk with re-canonicalisation by the verifier (developer-guide §7, line 316).
 
@@ -332,3 +333,126 @@ Canonical JSON is the input to signing. Any change to `JsonSerializerOptions` (a
 | TD-C17 | `CanonicalJsonTests.cs:13` | `Dispose` doesn't swallow `IOException` — flaky on Windows if a previous handle is held |
 | TD-C18 | `DomainAssigner.cs` | No XML doc comment on the public static class explaining "first match wins" |
 | TD-C19 | `IdGenerator.cs:18` | `seenIds` value (the existing pattern) is only used for the exception message — could be `HashSet<string>` if the message dropped it; minor
+
+---
+
+## 🟠 Phase 2d — Quick wins (Stories 12–13)
+
+### TD-D01 · Priority 36 — Config-file `logVerbosity` ignored
+**File:** `Delta.DocGen/CLI/CliRunner.cs:11`
+
+`ConsoleLogger` is built from `args.Verbosity ?? LogVerbosity.Normal` *before* `ConfigLoader.Load` runs. A `logVerbosity: "silent"` value in `docgen.config.json` is silently ignored when no `--verbosity` flag is passed.
+
+*Fix:* After successful config load, if `args.Verbosity is null` rebuild the logger using `config.LogVerbosity`. Add a test pinning the behaviour.
+
+---
+
+### TD-D03 · Priority 30 — Envelope/generator versions are magic strings
+**File:** `Delta.DocGen/Pipeline/PipelineRunner.cs:14-16`
+
+`EnvelopeVersion`, `GeneratorVersion`, `SchemaRelativeRef` are private constants with no link to the schema file's `v1/` directory or the assembly version.
+
+*Fix:* Extract a `Delta.DocGen.Output.Schema.SchemaConstants` class with `EnvelopeVersion`, `GeneratorVersion`, `SchemaRelativeRef`, `SchemaVersion`. Wire `SchemaWriter` and `PipelineRunner` to it.
+
+---
+
+### TD-D04 · Priority 28 — Envelope written before schema; failed schema write leaves orphan
+**File:** `Delta.DocGen/Pipeline/PipelineRunner.cs:90-95`
+
+Output order is envelope-then-schema. If `SchemaWriter` throws, the envelope is already on disk referencing a missing schema. The collision test verifies "no envelope written" only for failures that throw *before* either write.
+
+*Fix:* Write the schema first (idempotent + tiny), then the envelope.
+
+---
+
+### TD-D06 · Priority 25 — `--version` not wired
+**File:** `Delta.DocGen/CLI/RootCommand.cs:38-45`
+
+`docgen --version` returns "Unrecognized command or argument". `System.CommandLine` does not add `--version` by default in this configuration.
+
+*Fix:* Add a `--version` option that prints `SchemaConstants.GeneratorVersion` (from TD-D03) and exits 0 without running the pipeline.
+
+---
+
+### TD-D07 · Priority 24 — `DryRunStillComputesDigest` self-documents as flaky
+**File:** `Delta.DocGen/Pipeline/PipelineRunner.cs:77`, `Delta.DocGen.Tests/Pipeline/PipelineRunnerTests.cs:88-96`
+
+`DateTime.UtcNow.ToString(...)` baked into the runner with no seam. The test acknowledges that two back-to-back runs across a second boundary produce different digests.
+
+*Fix:* Add `Func<DateTime>? clock = null` parameter on `Run`, default `() => DateTime.UtcNow`. Rewrite the test to pass a fixed clock.
+
+---
+
+### TD-D11 · Priority 20 — `Delta.DocGen.CLI.RootCommand` shadows `System.CommandLine.RootCommand`
+**File:** `Delta.DocGen/CLI/RootCommand.cs:7`, `Delta.DocGen/Program.cs:2`
+
+The naming collision forces a `DocGenRootCommand` alias in `Program.cs` and in tests. A future file will forget the alias.
+
+*Fix:* Rename the static class to `CliRootCommand`. Drop the alias.
+
+---
+
+## 🟡 Phase 3c — Medium work (Stories 12–13)
+
+### TD-D02 · Priority 32 — `catch (Exception)` is too broad and conflates failure kinds
+**File:** `Delta.DocGen/Pipeline/PipelineRunner.cs:118`
+
+The top-level catch absorbs everything — `OutOfMemoryException`, future `OperationCanceledException`, and ordinary user-input errors all produce exit code 1.
+
+*Fix:* Add a `FailureCategory` enum (`UserError | InternalError`) to `PipelineResult`. Catch known recoverable types (`InvalidOperationException`, `IOException`, `DirectoryNotFoundException`, `JsonException`); let others propagate. `CliRunner` maps category → exit code (1 user, 2 internal).
+
+---
+
+### TD-D05 · Priority 28 — Errors go to stdout; non-zero exit codes don't discriminate
+**File:** `Delta.DocGen/Logging/ConsoleLogger.cs`, `Delta.DocGen/CLI/CliRunner.cs:26-31`
+
+`ConsoleLogger.Error` writes to `Console.Out`. Both "config not found" and "pipeline failed" return exit 1.
+
+*Fix:* Route `Error` and `Warn` to `Console.Error` in `ConsoleLogger`. With TD-D02's `FailureCategory`, map to distinct exit codes (1 user error, 2 pipeline failure).
+
+---
+
+### TD-D08 · Priority 24 — `UnmatchedCountingLogger` substring-sniffs log messages
+**File:** `Delta.DocGen/Pipeline/PipelineRunner.cs:21`
+
+`"Unmatched step in"` is hardcoded in two places (producer in `UsageCounter.cs:85` and consumer in `PipelineRunner`). Any wording change zeroes the count silently.
+
+*Fix:* Hoist the phrase into a shared `LogPhrases` constant referenced from both files. Pin the phrase with a test.
+
+---
+
+### TD-D12 · Priority 24 — Usage counts keyed by pattern, not (domain, pattern)
+**File:** `Delta.DocGen/Pipeline/PipelineRunner.cs:54-63`
+
+Same pattern in two domains would share a count. **Verified against the spec — Reqnroll throws an ambiguous-step error at runtime if two bindings share a pattern, so this case represents broken user code rather than a real correctness gap.** Documented for awareness; not fixing.
+
+*Status:* Documented — same-pattern-multiple-domains is broken Reqnroll code; tool behaviour matches the input.
+
+---
+
+### TD-D13 · Priority 21 — `$schema` ref set during dry-run despite no schema being written
+**File:** `Delta.DocGen/Pipeline/PipelineRunner.cs:74-96`
+
+Currently inert (dry-run writes nothing). If dry-run later emits envelope to stdout, the `$schema` ref points nowhere.
+
+*Fix:* During dry-run, log a Verbose note that the `$schema` reference is unresolved on disk.
+
+---
+
+## 🟢 Phase 4c — Deferred (Stories 12–13)
+
+| ID | File | Issue |
+|----|------|-------|
+| TD-D09 | `PipelineRunner.cs:38` | No XML doc comment on `Run` clarifying that stages 2–8 are owned here, Stage 1 (config) by the caller |
+| TD-D10 | `Program.cs:1` | `using System.CommandLine;` looks unused but is needed for `InvokeAsync` extension — add a comment so it isn't deleted in cleanup |
+| TD-D14 | `PipelineRunner.cs:14` | `SchemaRelativeRef` hardcoded forward-slashes — fine for JSON, inconsistent with Windows path handling elsewhere (resolved by TD-D03's SchemaConstants) |
+| TD-D15 | `RootCommand.cs:24` | `--exclude` description says "additive" — no `--no-exclude-config` to suppress config excludes |
+| TD-D16 | `RootCommand.cs:30` | `--verbosity` accepts any string; `System.CommandLine` supports `FromAmong("silent","normal","verbose")` for early validation |
+| TD-D17 | `CliRunnerTests.cs:96-105` | `AdditionalExcludesAreAppliedOnTopOfConfig` only asserts exit 0 — does not actually verify the exclude took effect |
+| TD-D18 | `PipelineRunnerTests.cs:113-135` | `PipelineCatchesIdCollisionAndReturnsFailedResult` checks `File.Exists` but not `result.OutputPath`/`SchemaPath` are null |
+| TD-D19 | `PipelineFixture.cs` | Fixture used by both pipeline + CLI tests; workspace/config creation duplicated between the two test classes |
+| TD-D20 | `PipelineResult.cs` | All counts typed as `int`; no validation that they're non-negative |
+| TD-D21 | `PipelineRunner.cs:21` | `MatchPhrase` constant duplicated between producer and consumer (resolved alongside TD-D08) |
+| TD-D22 | `CliRunner.cs:11` | `ConsoleLogger` is not disposed — minor on the buffered colours path |
+| TD-D23 | `RootCommandTests.cs` | No test for unknown options (`--frobnicate`); `System.CommandLine` behaviour not pinned |
+
