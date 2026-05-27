@@ -163,6 +163,18 @@ public sealed class ConfigLoaderTests : IDisposable
     }
 
     [Fact]
+    public void VerbosityIsCaseInsensitive()
+    {
+        var json = """{ "root": "./tests", "output": "./out.json", "logVerbosity": "Normal" }""";
+        var path = Path.Combine(_dir, "docgen.config.json");
+        File.WriteAllText(path, json);
+
+        var config = ConfigLoader.Load(path, new ConfigOverrides());
+
+        config.LogVerbosity.Should().Be("normal");
+    }
+
+    [Fact]
     public void ThrowsIfDomainRuleHasBlankPattern()
     {
         var json = """

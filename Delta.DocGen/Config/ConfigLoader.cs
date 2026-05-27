@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Delta.DocGen.Logging;
 
 namespace Delta.DocGen.Config;
 
@@ -19,7 +20,8 @@ public static class ConfigLoader
         ReadCommentHandling = JsonCommentHandling.Skip,
     };
 
-    private static readonly HashSet<string> _validVerbosities = ["silent", "normal", "verbose"];
+    private static readonly HashSet<string> _validVerbosities =
+        [LogVerbosity.Silent, LogVerbosity.Normal, LogVerbosity.Verbose];
 
     public static DocGenConfig Load(string configPath, ConfigOverrides overrides)
     {
@@ -35,7 +37,8 @@ public static class ConfigLoader
         var excludes = new List<string>(file.Exclude ?? []);
         excludes.AddRange(overrides.AdditionalExcludes);
 
-        var verbosity = overrides.LogVerbosity ?? file.LogVerbosity ?? "normal";
+        var verbosity = (overrides.LogVerbosity ?? file.LogVerbosity ?? LogVerbosity.Normal)
+                        .ToLowerInvariant();
         if (!_validVerbosities.Contains(verbosity))
             throw new InvalidOperationException(
                 $"Invalid logVerbosity '{verbosity}'. Valid values: silent, normal, verbose.");

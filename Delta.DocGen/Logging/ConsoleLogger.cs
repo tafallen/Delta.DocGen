@@ -13,13 +13,13 @@ public sealed class ConsoleLogger : IDocGenLogger
 
     public ConsoleLogger(string verbosity)
     {
-        if (verbosity is not ("silent" or "normal" or "verbose"))
+        if (verbosity is not (LogVerbosity.Silent or LogVerbosity.Normal or LogVerbosity.Verbose))
             throw new ArgumentException(
                 $"Unknown verbosity '{verbosity}'. Expected: silent | normal | verbose.",
                 nameof(verbosity));
 
-        _silent  = verbosity == "silent";
-        _verbose = verbosity == "verbose";
+        _silent  = verbosity == LogVerbosity.Silent;
+        _verbose = verbosity == LogVerbosity.Verbose;
     }
 
     public void Info(string message)
