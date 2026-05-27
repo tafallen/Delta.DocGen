@@ -42,6 +42,9 @@
 |----|-----------|
 | TD-A01 | ✅ `Enum.Parse<StepType>` replaced with `Enum.TryParse`; warn + skip if name has no matching enum value |
 | TD-A02 | ✅ Null-suppressor `!` on `GetDirectoryName` replaced with null-coalescing `InvalidOperationException` |
+| TD-A03 | ✅ Theory test added asserting `InvalidOperationException` on whitespace-only `root` and `output` values |
+| TD-A04 | ✅ Test added verifying `Table` injection does not consume a placeholder slot; trailing `string` becomes `DocString` |
+| TD-A11 | ✅ Developer guide §4 updated: commits go directly to `master`; stale worktree instructions removed |
 
 ---
 
@@ -50,7 +53,7 @@
 | Phase | Items | Theme |
 |-------|-------|-------|
 | 🔴 Before Story 7 | ~~2~~ 0 | ✅ Both resolved |
-| 🟠 Quick wins | 10 | Effort-1 fixes with real test and build payoff |
+| 🟠 Quick wins | ~~10~~ 7 | 3 resolved (TD-A03, A04, A11); 7 remain |
 | 🟡 Medium work | 4 | Design improvements alongside Stories 8–10 |
 | 🟢 Deferred | 12 | Low-risk polish, nice-to-haves |
 
@@ -150,7 +153,4 @@ Address opportunistically when touching the relevant file.
 
 ## Recommended action before Story 7
 
-1. ~~Resolve **TD-A01**~~ ✅ Done
-2. ~~Resolve **TD-A02**~~ ✅ Done
-3. Fix **TD-A03 and TD-A04** (test gaps) — 15 minutes total; the interleaved-Table case is the most likely real-world scenario for Story 7's usage counting work.
-4. Fix **TD-A11** (stale docs) — 2 minutes; removes confusing worktree instructions before any new contributor reads them.
+All pre-Story-7 recommendations resolved. ✅
