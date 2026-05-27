@@ -93,15 +93,29 @@ public sealed class CliRunnerTests : IDisposable
     }
 
     [Fact]
-    public void AdditionalExcludesAreAppliedOnTopOfConfig()
+    public void AdditionalExcludesActuallyReduceStepCount()
     {
-        // Exclude one domain via CLI; pipeline still succeeds.
-        var exitCode = CliRunner.Run(new CliArgs(
+        // Baseline: no extra excludes — fixture should produce some step count.
+        var baseline = CliRunner.Run(new CliArgs(
+            ConfigPath: _configPath,
+            Root: null, Output: null, Excludes: [],
+            Verbosity: "silent", DryRun: false));
+        baseline.Should().Be(0);
+        var baselineStepCount = JsonDocument.Parse(File.ReadAllText(_output))
+            .RootElement.GetProperty("steps").GetArrayLength();
+
+        File.Delete(_output);  // clean slate for the second run
+
+        // Excluded run: drop the Forms directory via --exclude.
+        var excluded = CliRunner.Run(new CliArgs(
             ConfigPath: _configPath,
             Root: null, Output: null, Excludes: ["**/Forms/**"],
-            Verbosity: "silent", DryRun: true));
+            Verbosity: "silent", DryRun: false));
+        excluded.Should().Be(0);
+        var excludedStepCount = JsonDocument.Parse(File.ReadAllText(_output))
+            .RootElement.GetProperty("steps").GetArrayLength();
 
-        exitCode.Should().Be(0);
+        excludedStepCount.Should().BeLessThan(baselineStepCount);
     }
 
     [Fact]

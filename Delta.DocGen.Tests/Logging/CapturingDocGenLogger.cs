@@ -17,4 +17,13 @@ public sealed class CapturingDocGenLogger : IDocGenLogger
     public void Error(string message)   => ErrorMessages.Add(message);
     public void Error(string message, Exception ex) => ErrorMessages.Add($"{message}: {ex.Message}");
     public void Summary(string message) => SummaryMessages.Add(message);
+
+    public void Clear()
+    {
+        InfoMessages.Clear();
+        VerboseMessages.Clear();
+        WarnMessages.Clear();
+        ErrorMessages.Clear();
+        SummaryMessages.Clear();
+    }
 }
