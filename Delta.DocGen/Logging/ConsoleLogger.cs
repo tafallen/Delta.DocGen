@@ -6,6 +6,11 @@ namespace Delta.DocGen.Logging;
 ///   normal  — Info + Warn + Error + Summary  (default)
 ///   verbose — all levels
 /// </summary>
+/// <remarks>
+/// Single-threaded invariant: <see cref="Console.ForegroundColor"/> is set and reset within
+/// the same synchronous call. Do not call this logger from concurrent threads; introduce a
+/// lock or switch to ANSI escape codes before enabling parallel file scanning.
+/// </remarks>
 public sealed class ConsoleLogger : IDocGenLogger
 {
     private readonly bool _silent;

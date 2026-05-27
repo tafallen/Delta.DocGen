@@ -257,4 +257,41 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         steps.Should().ContainSingle();
         steps[0].Line.Should().Be(4);
     }
+
+    [Fact]
+    public void ExtractsStepDefinitionAttribute()
+    {
+        var path = WriteFile("Steps/UniversalStep.cs", """
+            using Reqnroll;
+            public class MySteps
+            {
+                [StepDefinition("I do something universal")]
+                public void DoSomethingUniversal() { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        steps[0].Type.Should().Be(StepType.StepDefinition);
+        steps[0].Pattern.Should().Be("I do something universal");
+    }
+
+    [Fact]
+    public void TableParamMapsToStringWithoutConsumingPlaceholder()
+    {
+        var path = WriteFile("Steps/TableStep.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given("I have the following users")]
+                public void GivenUsers(Table table) { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        steps[0].Params.Should().ContainSingle(p => p.Type == ParamTypes.String && p.Name == "table");
+    }
 }

@@ -10,7 +10,7 @@ namespace Delta.DocGen.Scanner.CSharp;
 public static class StepDefinitionExtractor
 {
     private static readonly HashSet<string> StepAttributeNames =
-        new(StringComparer.Ordinal) { "Given", "When", "Then" };
+        new(StringComparer.Ordinal) { "Given", "When", "Then", "StepDefinition" };
 
     private static readonly Regex PlaceholderPattern =
         new(@"\{[^}]+\}", RegexOptions.Compiled);
@@ -40,7 +40,7 @@ public static class StepDefinitionExtractor
                         continue;
                     }
 
-                    var @params = ExtractParams(method.ParameterList, pattern);
+                    var @params = ExtractParams(method.ParameterList, pattern, logger);
                     var line = attr.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
                     var source = method.ToString();
 
@@ -75,15 +75,15 @@ public static class StepDefinitionExtractor
     }
 
     private static IReadOnlyList<ParamRecord> ExtractParams(
-        ParameterListSyntax paramList, string pattern)
+        ParameterListSyntax paramList, string pattern, IDocGenLogger logger)
     {
         var placeholders = PlaceholderPattern.Matches(pattern);
-        var placeholderIndex = 0;
         var result = new List<ParamRecord>();
+        var placeholderIndex = 0;
 
         foreach (var param in paramList.Parameters)
         {
-            var csType = param.Type?.ToString() ?? "string";
+            var csType = param.Type?.ToString() ?? ParamTypes.String;
             var name = param.Identifier.Text;
             string schemaType;
             string example;
@@ -100,10 +100,23 @@ public static class StepDefinitionExtractor
                     example = "0.00";
                     placeholderIndex++;
                     break;
-                default:
+                case "string":
                     schemaType = placeholderIndex < placeholders.Count
                         ? ParamTypes.String
                         : ParamTypes.DocString;
+                    example = "";
+                    placeholderIndex++;
+                    break;
+                case "Table":
+                case "DataTable":
+                case "ScenarioContext":
+                    // Known Reqnroll/SpecFlow injection types passed by the framework, not bound to a placeholder.
+                    schemaType = ParamTypes.String;
+                    example = "";
+                    break;
+                default:
+                    logger.Warn($"Unrecognised parameter type '{csType}' on '{name}' — defaulting to string.");
+                    schemaType = ParamTypes.String;
                     example = "";
                     placeholderIndex++;
                     break;
