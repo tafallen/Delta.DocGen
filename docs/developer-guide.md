@@ -452,10 +452,10 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 
 | Stories | Status |
 |---------|--------|
-| 1–8 | ✅ Complete, merged to master, pushed to GitHub |
-| 9–15 | ⬜ Not started |
+| 1–9 | ✅ Complete, merged to master, pushed to GitHub |
+| 10–15 | ⬜ Not started |
 
-**Test count:** 70 passing (13 config, 9 discoverer, 16 extractor, 10 usage-counter, 7 domain-assigner, 5 story-7-extras)
+**Test count:** 77 passing (13 config, 9 discoverer, 16 extractor, 10 usage-counter, 7 domain-assigner, 7 id-generator, 5 story-7-extras)
 
 ### Story-by-story status
 
@@ -469,7 +469,7 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 6 | C# step extraction | `StepDefinitionExtractor` (Roslyn) + tests | ✅ |
 | 7 | Usage counting | `UsageCounter` (Gherkin) + tests | ✅ |
 | 8 | Domain assignment | `DomainAssigner` + tests | ✅ |
-| 9 | ID generation | `IdGenerator` + tests | ⬜ |
+| 9 | ID generation | `IdGenerator` + tests | ✅ |
 | 10 | Canonical JSON + signing | `CanonicalJson`, `Signer` + tests | ⬜ |
 | 11 | JSON Schema | `step-library.v1.schema.json`, `SchemaWriter` | ⬜ |
 | 12 | Pipeline runner | `PipelineRunner` (orchestrates stages 1–8) | ⬜ |
@@ -477,17 +477,14 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 14 | Full test suite | All tests green, zero warnings | ⬜ |
 | 15 | End-to-end smoke test | Real fixture files, full run, output verified | ⬜ |
 
-### What's next — Story 9: ID generation
+### What's next — Story 10: Canonical JSON and signing
 
-The next story implements `IdGenerator`. Key points:
+The next story implements `CanonicalJson` and `Signer`. Key points:
 
-- Input: domain-assigned `RawStep[]` + `IReadOnlyDictionary<string, int>` usage counts + domain rules + fallback domain
-- Output: `(IReadOnlyList<StepRecord> Steps, IReadOnlyList<DomainRecord> Domains)`
-- ID format: `<domain-prefix>-<8-hex-chars>` where the hex is the first 8 chars of SHA-256 of `pattern.Trim().ToLowerInvariant()`
-- Domain prefix: domain ID lowercased, non-alphanumeric chars replaced with hyphens
-- Collisions cause a fatal `InvalidOperationException` with both conflicting patterns in the message
-- `DomainRecord` list: distinct domains in first-occurrence order; label from matching domain rule (or domain ID as label for the fallback domain)
-- `StepRecord` V1 defaults: `Tags = []`, `Description = ""`, `SuggestsNext = []`
+- `CanonicalJson.Serialise(object)` → `string`: serialise any object to compact JSON with all object keys sorted alphabetically (recursively). Uses `System.Text.Json.Nodes.JsonNode` internally.
+- `CanonicalJson.Write(Envelope, string outputPath)`: serialise the signed envelope as pretty-printed JSON and write to file, creating the output directory if absent.
+- `Signer.Sign(Envelope)` → `Envelope`: set `Signature = null`, serialise canonically (null fields omitted), SHA-256 hash the UTF-8 bytes, hex-encode, return envelope with `Signature = new SignatureRecord("SHA-256", digest)`.
+- The canonical options must use `DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull` so the `signature` field is absent from the bytes that are hashed.
 
 ---
 
