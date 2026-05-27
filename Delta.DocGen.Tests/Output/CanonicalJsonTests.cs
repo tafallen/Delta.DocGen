@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Delta.DocGen.Model;
 using Delta.DocGen.Output.Serialiser;
 using FluentAssertions;
@@ -11,6 +12,7 @@ public sealed class CanonicalJsonTests : IDisposable
 
     public CanonicalJsonTests() => Directory.CreateDirectory(_dir);
     public void Dispose() => Directory.Delete(_dir, recursive: true);
+
     [Fact]
     public void KeysSortedAlphabeticallyAtTopLevel()
     {
@@ -18,12 +20,8 @@ public sealed class CanonicalJsonTests : IDisposable
 
         var json = CanonicalJson.Serialise(obj);
 
-        // Keys must appear in alphabetical order
-        var applePos = json.IndexOf("apple", StringComparison.Ordinal);
-        var mangoPos = json.IndexOf("mango", StringComparison.Ordinal);
-        var zebraPos = json.IndexOf("zebra", StringComparison.Ordinal);
-        applePos.Should().BeLessThan(mangoPos);
-        mangoPos.Should().BeLessThan(zebraPos);
+        var keys = JsonNode.Parse(json)!.AsObject().Select(p => p.Key).ToList();
+        keys.Should().Equal("apple", "mango", "zebra");
     }
 
     [Fact]
@@ -33,12 +31,8 @@ public sealed class CanonicalJsonTests : IDisposable
 
         var json = CanonicalJson.Serialise(obj);
 
-        // Inside "outer", "a" must appear before "z"
-        var outerPos = json.IndexOf("outer", StringComparison.Ordinal);
-        var aPos     = json.IndexOf("\"a\"",  StringComparison.Ordinal);
-        var zPos     = json.IndexOf("\"z\"",  StringComparison.Ordinal);
-        aPos.Should().BeGreaterThan(outerPos);
-        aPos.Should().BeLessThan(zPos);
+        var innerKeys = JsonNode.Parse(json)!["outer"]!.AsObject().Select(p => p.Key).ToList();
+        innerKeys.Should().Equal("a", "z");
     }
 
     [Fact]
@@ -48,23 +42,25 @@ public sealed class CanonicalJsonTests : IDisposable
 
         var json = CanonicalJson.Serialise(obj);
 
-        var charliePos = json.IndexOf("charlie", StringComparison.Ordinal);
-        var alphaPos   = json.IndexOf("alpha",   StringComparison.Ordinal);
-        var bravoPos   = json.IndexOf("bravo",   StringComparison.Ordinal);
-        charliePos.Should().BeLessThan(alphaPos);
-        alphaPos.Should().BeLessThan(bravoPos);
+        var items = JsonNode.Parse(json)!["items"]!.AsArray()
+            .Select(e => e!.GetValue<string>()).ToList();
+        items.Should().Equal("charlie", "alpha", "bravo");
     }
 
     [Fact]
-    public void OutputContainsNoWhitespace()
+    public void OutputContainsNoInsignificantWhitespace()
     {
-        var obj = new { key = "value", number = 42 };
+        // Canonical form must have no whitespace between tokens — but whitespace
+        // inside string values is preserved verbatim.
+        var obj = new { greeting = "hello world", number = 42 };
 
         var json = CanonicalJson.Serialise(obj);
 
-        json.Should().NotContain(" ");
+        json.Should().NotContain(": ");      // no space after colons
+        json.Should().NotContain(", ");      // no space after commas
         json.Should().NotContain("\n");
         json.Should().NotContain("\r");
+        json.Should().Contain("hello world"); // value space preserved
     }
 
     [Fact]
@@ -80,6 +76,39 @@ public sealed class CanonicalJsonTests : IDisposable
         content.Should().Contain("\n");         // pretty-printed
         content.Should().Contain("1.0.0");      // version present
         content.Should().Contain("\"steps\"");  // steps key present
+    }
+
+    [Fact]
+    public void CanonicalOutputForKnownEnvelopeIsByteStable()
+    {
+        // Snapshot test: pins canonical JSON byte-for-byte. If this fails after a runtime
+        // or library upgrade, every existing consumer's signature has shifted — review carefully.
+        var envelope = new Envelope(
+            Schema:           "./schema/v1/step-library.schema.json",
+            Version:          "1.0.0",
+            GeneratedAt:      "2026-05-27T09:00:00Z",
+            GeneratorVersion: "1.0.0",
+            Enriched:         false,
+            Domains:          [new DomainRecord("Auth", "Auth & Identity")],
+            Steps:            [new StepRecord(
+                "auth-a1b2c3d4", StepType.Given, "I am logged in", [],
+                "Auth/AuthSteps.cs", 1, "Auth", [], 0, "", "", [])],
+            Signature:        null);
+
+        var json = CanonicalJson.Serialise(envelope);
+
+        const string expected =
+            "{\"$schema\":\"./schema/v1/step-library.schema.json\"," +
+            "\"domains\":[{\"id\":\"Auth\",\"label\":\"Auth \\u0026 Identity\"}]," +
+            "\"enriched\":false," +
+            "\"generatedAt\":\"2026-05-27T09:00:00Z\"," +
+            "\"generatorVersion\":\"1.0.0\"," +
+            "\"steps\":[{\"description\":\"\",\"domain\":\"Auth\",\"file\":\"Auth/AuthSteps.cs\"," +
+            "\"id\":\"auth-a1b2c3d4\",\"line\":1,\"params\":[],\"pattern\":\"I am logged in\"," +
+            "\"source\":\"\",\"suggestsNext\":[],\"tags\":[],\"type\":\"Given\",\"used\":0}]," +
+            "\"version\":\"1.0.0\"}";
+
+        json.Should().Be(expected);
     }
 
     private static Envelope MakeEnvelope() => new(
