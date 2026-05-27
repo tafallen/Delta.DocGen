@@ -1,7 +1,7 @@
 # Delta.DocGen — Developer Guide
 
 **Last updated:** 2026-05-27  
-**Implementation status:** Stories 1–5 complete (5 of 15 tasks done)
+**Implementation status:** Stories 1–6 complete (6 of 15 tasks done)
 
 ---
 
@@ -67,7 +67,7 @@ Delta.DocGen/
 │   │   └── PipelineRunner.cs                       ⬜ Story 12
 │   ├── Scanner/
 │   │   ├── CSharp/
-│   │   │   └── StepDefinitionExtractor.cs          ⬜ Story 6
+│   │   │   └── StepDefinitionExtractor.cs          ✅ done
 │   │   └── Gherkin/
 │   │       └── UsageCounter.cs                     ⬜ Story 7
 │   ├── Output/
@@ -447,7 +447,7 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 1–5 | ✅ Complete, merged to master, pushed to GitHub |
 | 6–15 | ⬜ Not started |
 
-**Test count:** 22 passing (13 config, 9 discoverer)
+**Test count:** 33 passing (13 config, 9 discoverer, 11 extractor)
 
 ### Story-by-story status
 
@@ -458,7 +458,7 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 3 | Logging | `IDocGenLogger`, `ConsoleLogger` (3 verbosity levels), `NullDocGenLogger` | ✅ |
 | 4 | Configuration | `DocGenConfig`, `DomainRule`, `ConfigLoader`, 13 tests | ✅ |
 | 5 | File discovery | `Discoverer`, `DiscoveryResult`, 9 tests | ✅ |
-| 6 | C# step extraction | `StepDefinitionExtractor` (Roslyn) + tests | ⬜ |
+| 6 | C# step extraction | `StepDefinitionExtractor` (Roslyn) + tests | ✅ |
 | 7 | Usage counting | `UsageCounter` (Gherkin) + tests | ⬜ |
 | 8 | Domain assignment | `DomainAssigner` + tests | ⬜ |
 | 9 | ID generation | `IdGenerator` + tests | ⬜ |
@@ -469,17 +469,17 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 14 | Full test suite | All tests green, zero warnings | ⬜ |
 | 15 | End-to-end smoke test | Real fixture files, full run, output verified | ⬜ |
 
-### What's next — Story 6: C# step extraction
+### What's next — Story 7: Feature file usage counting
 
-The next story implements `StepDefinitionExtractor` using Roslyn. It is the most complex single component in the pipeline. Key points:
+The next story implements `UsageCounter` using the Gherkin library. Key points:
 
-- Input: a `.cs` file path (relative) + the absolute root path
-- Output: `IReadOnlyList<RawStep>`
-- Uses `CSharpSyntaxTree.ParseText` — does **not** load project references
-- Matches `[Given]`, `[When]`, `[Then]` attributes by name only
-- Infers param type from C# type: `string` → `"string"`, `int` → `"int"`, `decimal` → `"decimal"`, `string` with no `{…}` placeholder → `"DocString"`
-- Line number is 1-based, from the attribute's position in the file
-- Source is the verbatim method body text
+- Input: a `.feature` file path (relative) + the absolute root path + the list of `RawStep` records from Stage 3
+- Output: the same `RawStep` list with `Used` counts incremented
+- Uses the official `Gherkin` NuGet package (already in project)
+- Parses each `.feature` file, walks every step line in every scenario
+- Matches step text against extracted patterns using regex (Cucumber Expressions → regex)
+- Increments `used` counter on the matching `RawStep`
+- Unmatched step lines → warning log
 
 ---
 
