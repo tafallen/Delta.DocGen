@@ -134,4 +134,127 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         steps[0].Params[0].Type.Should().Be("string");
         steps[0].Params[1].Type.Should().Be("DocString");
     }
+
+    [Fact]
+    public void ProducesOneRawStepPerAttribute()
+    {
+        var path = WriteFile("Steps/MultiAttrSteps.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given("I am on the home page")]
+                [Given("I navigate to the home page")]
+                public void GivenOnHomePage() { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().HaveCount(2);
+        steps[0].Pattern.Should().Be("I am on the home page");
+        steps[1].Pattern.Should().Be("I navigate to the home page");
+    }
+
+    [Fact]
+    public void ReturnsEmptyForFileWithNoStepAttributes()
+    {
+        var path = WriteFile("Steps/PlainSteps.cs", """
+            public class PlainClass
+            {
+                public void SomeMethod() { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ExtractsStepsFromMultipleMethods()
+    {
+        var path = WriteFile("Steps/MultiMethodSteps.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given("step one")]
+                public void StepOne() { }
+
+                [When("step two")]
+                public void StepTwo() { }
+
+                [Then("step three")]
+                public void StepThree() { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().HaveCount(3);
+        steps.Select(s => s.Type).Should().BeEquivalentTo(["Given", "When", "Then"]);
+    }
+
+    [Fact]
+    public void ExtractsReqnrollQualifiedAttributeByName()
+    {
+        var path = WriteFile("Steps/ReqnrollSteps.cs", """
+            using Reqnroll;
+            public class MySteps
+            {
+                [Reqnroll.Given("I use reqnroll")]
+                public void GivenIUseReqnroll() { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        steps[0].Type.Should().Be("Given");
+        steps[0].Pattern.Should().Be("I use reqnroll");
+    }
+
+    [Fact]
+    public void SourceContainsFullMethodText()
+    {
+        var path = WriteFile("Steps/SourceSteps.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given("I am on the home page")]
+                public void GivenOnHomePage()
+                {
+                    // body comment
+                }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        steps[0].Source.Should().Contain("[Given(");
+        steps[0].Source.Should().Contain("GivenOnHomePage");
+        steps[0].Source.Should().Contain("// body comment");
+    }
+
+    [Fact]
+    public void LineNumberIsOneBasedAndMatchesAttribute()
+    {
+        var path = WriteFile("Steps/LineSteps.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given("step one")]
+                public void StepOne() { }
+            }
+            """);
+        // line 1: using TechTalk.SpecFlow;
+        // line 2: public class MySteps
+        // line 3: {
+        // line 4:     [Given("step one")]
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        steps[0].Line.Should().Be(4);
+    }
 }
