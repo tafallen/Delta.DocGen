@@ -67,4 +67,22 @@ public sealed class DomainAssignerTests
 
         logger.WarnMessages.Should().BeEmpty();
     }
+
+    [Fact]
+    public void FirstMatchingRuleWins()
+    {
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "")
+        };
+        var rules = new List<DomainRule>
+        {
+            new("Auth/**", "Auth",    "Auth & Identity"),
+            new("**",      "General", "General"),            // catch-all — must NOT win
+        };
+
+        var result = DomainAssigner.Assign(steps, rules, "General", NullDocGenLogger.Instance);
+
+        result[0].Domain.Should().Be("Auth");
+    }
 }
