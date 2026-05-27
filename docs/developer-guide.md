@@ -130,7 +130,7 @@ Delta.DocGen/
 
 SDK pinned to `8.0.419` (roll forward: `latestMinor`) via `global.json`.
 
-> **Note:** `System.CommandLine` 2.0.0-beta4 emits `[Experimental]` attributes on some APIs. If `TreatWarningsAsErrors` causes build failures in the CLI story, suppress the specific warning code rather than disabling `TreatWarningsAsErrors` globally.
+> **Note:** `System.CommandLine` 2.0.0-beta4.22272.1 is a 2022 pre-release. It emits `[Experimental]` attributes on some APIs. If `TreatWarningsAsErrors` causes build failures in Story 13 (CLI), suppress warning `SYSLIB0050` (or whichever code the compiler reports) at the `Delta.DocGen.csproj` level rather than disabling `TreatWarningsAsErrors` globally.
 
 ---
 
@@ -203,21 +203,22 @@ CLI args
 │  Stage 3:       │   │  Stage 4:                     │
 │  C# parsing     │   │  Feature file parsing         │
 │  (Roslyn)       │   │  (Gherkin)                    │
-│  → RawStep[]    │   │  → Dictionary<pattern, count> │
-└────────┬────────┘   └──────────────┬────────────────┘
-         │                           │
-         └────────────┬──────────────┘
-                      │ RawStep[] + usage counts
-                      ▼
+│  → RawStep[]    │   │  → IReadOnlyDictionary        │
+└────────┬────────┘   │    <string, int>              │
+         │            └──────────────┬────────────────┘
+         │                           │ (bypasses Stage 5)
+         ▼                           │
 ┌─────────────────────────────────────────────────────┐
 │  Stage 5: Domain assignment                         │
-│  DomainAssigner → RawStep[] (domain populated)      │
+│  DomainAssigner(RawStep[]) → RawStep[]              │
+│  (Domain field populated via `with` expression)     │
 └───────────────────────────┬─────────────────────────┘
-                            │
+                            │ RawStep[] (domain filled)
+                            │   + IReadOnlyDictionary<string, int>
                             ▼
 ┌─────────────────────────────────────────────────────┐
 │  Stage 6: ID generation                             │
-│  IdGenerator → StepRecord[]                         │
+│  IdGenerator(RawStep[], counts) → StepRecord[]      │
 └───────────────────────────┬─────────────────────────┘
                             │
                             ▼
@@ -246,7 +247,7 @@ CLI args
 | `Pipeline/DomainAssigner` | Match each step's file path against domain glob rules; assign domain |
 | `Pipeline/IdGenerator` | Generate stable deterministic IDs: `<domain-prefix>-<pattern-hash>` |
 | `Output/Serialiser/` | Canonical JSON serialisation (sorted keys, no whitespace); SHA-256 signing |
-| `Output/Schema/` | Write embedded JSON Schema to output directory |
+| `Output/Schema/` | Write embedded JSON Schema to output directory. **Story 11 note:** `step-library.v1.schema.json` is currently a placeholder — it must be replaced with the real schema before Story 11 is closed, and the embedded resource registration must be verified. |
 | `CLI/` | `System.CommandLine` root command; bind options to `ConfigOverrides` |
 
 ---
@@ -273,7 +274,7 @@ CLI args
 - Parse each `.cs` file with `CSharpSyntaxTree.ParseText`.
 - Walk all method declarations looking for `[Given]`, `[When]`, `[Then]` attributes.
 - Both `TechTalk.SpecFlow` and `Reqnroll` namespaces are supported — matched by attribute name only (no namespace resolution required; names are identical).
-- Extract per step: type, pattern string, params (name + inferred type), file, line, verbatim source body.
+- Extract per step: type, pattern string, params (name + inferred type), file, line, full method text (all attribute lists + signature + body) as `Source`.
 - **DocString detection:** a `string` parameter with no corresponding `{…}` placeholder in the pattern is treated as a DocString parameter.
 
 ### Stage 4 — Feature file parsing (Gherkin)
@@ -285,8 +286,10 @@ CLI args
   - Cucumber Expression `{int}` → `\d+`
   - Cucumber Expression `{decimal}` → `[\d.]+`
   - Old-style regex patterns used as-is.
-- Increment `used` counter on the matching `RawStep`.
+- Produces `IReadOnlyDictionary<string, int>` (step pattern → use count). `RawStep` is immutable and is not mutated.
 - Unmatched step lines → warning log.
+
+The usage dictionary is passed **directly to Stage 6** (IdGenerator), bypassing Stage 5. Stage 5 (DomainAssigner) only receives `RawStep[]`.
 
 ### Stage 5 — Domain assignment
 
@@ -304,11 +307,16 @@ CLI args
 ### Stage 7 — Serialisation and signing
 
 1. Build `Envelope` record (without `signature`).
-2. Serialise to canonical JSON: **all object keys sorted alphabetically at every nesting level, no whitespace**.
+2. Serialise to **canonical JSON** for signing:
+   - **Field inclusion:** all `Envelope` fields **except** `signature`. The `$schema` field **is included** (`$` sorts before all letters).
+   - **Key order:** alphabetical by JSON property name at every nesting level. `$` sorts before all letters — `$schema` is first.
+   - **Format:** no whitespace, no indentation.
 3. Compute SHA-256 over UTF-8 bytes of the canonical string.
 4. Encode as lowercase hex → set `signature.digest`, `signature.algorithm = "SHA-256"`.
 5. Write final file (pretty-printed for readability).
 6. Write JSON Schema file alongside output.
+
+> The viewer must replicate this exact canonical form to verify signatures: include `$schema`, alphabetical key order at all nesting levels, no whitespace. Any deviation causes silent verification failure.
 
 ### Stage 8 — Summary
 

@@ -22,7 +22,9 @@ public static class Discoverer
             throw new DirectoryNotFoundException($"Root directory does not exist: {root}");
 
         var matcher = new Matcher();
-        // Include root-level files and all nested files
+        // Both root-level and recursive patterns are required.
+        // FileSystemGlobbing interprets "**/*.cs" as "one or more path segments then *.cs",
+        // so it does NOT match files directly in the root directory. "*.cs" catches those.
         matcher.AddInclude("*.cs");
         matcher.AddInclude("*.feature");
         matcher.AddInclude("**/*.cs");
