@@ -253,7 +253,7 @@ public sealed class UsageCounterTests : IDisposable
     [Fact]
     public void ThrowsFileNotFoundForMissingFeatureFile()
     {
-        var missing = "Features/DoesNotExist.feature";
+        var missing = "DoesNotExist.feature"; // _root exists, file does not
         var steps = new List<RawStep>
         {
             new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "")
@@ -261,6 +261,6 @@ public sealed class UsageCounterTests : IDisposable
 
         var act = () => UsageCounter.Count(steps, missing, _root, NullDocGenLogger.Instance);
 
-        act.Should().Throw<System.IO.IOException>();
+        act.Should().Throw<FileNotFoundException>();
     }
 }
