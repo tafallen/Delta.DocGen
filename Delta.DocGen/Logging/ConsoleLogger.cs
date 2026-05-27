@@ -27,15 +27,15 @@ public sealed class ConsoleLogger(string verbosity) : IDocGenLogger
     {
         if (_silent) return;
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine($"[WARN]  {message}");
-        Console.ResetColor();
+        try { Console.WriteLine($"[WARN]  {message}"); }
+        finally { Console.ResetColor(); }
     }
 
     public void Error(string message)
     {
         Console.ForegroundColor = ConsoleColor.Red;
-        Console.Error.WriteLine($"[ERROR] {message}");
-        Console.ResetColor();
+        try { Console.Error.WriteLine($"[ERROR] {message}"); }
+        finally { Console.ResetColor(); }
     }
 
     public void Summary(string message)
