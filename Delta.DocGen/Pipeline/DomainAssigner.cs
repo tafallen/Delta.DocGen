@@ -13,6 +13,17 @@ public static class DomainAssigner
         string fallbackDomain,
         IDocGenLogger logger)
     {
+        if (rules.Count == 0)
+        {
+            if (steps.Count > 0)
+                logger.Warn($"No domain rules configured; assigning fallback domain '{fallbackDomain}' to all {steps.Count} step(s).");
+            var fallbackResult = new List<RawStep>(steps.Count);
+            foreach (var step in steps)
+                fallbackResult.Add(step with { Domain = fallbackDomain });
+            logger.Info($"Domain assignment complete: {fallbackResult.Count} step(s) assigned.");
+            return fallbackResult.AsReadOnly();
+        }
+
         var matchers = rules
             .Select(r => (Rule: r, Matcher: BuildMatcher(r.Pattern)))
             .ToList();
@@ -21,9 +32,10 @@ public static class DomainAssigner
         foreach (var step in steps)
         {
             var matched = false;
+            var normalisedFile = step.File.Replace('\\', '/');
             foreach (var (rule, matcher) in matchers)
             {
-                if (matcher.Match(step.File).HasMatches)
+                if (matcher.Match(normalisedFile).HasMatches)
                 {
                     result.Add(step with { Domain = rule.Domain });
                     matched = true;
