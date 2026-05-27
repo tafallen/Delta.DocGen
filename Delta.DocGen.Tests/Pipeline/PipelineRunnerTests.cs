@@ -93,4 +93,19 @@ public sealed class PipelineRunnerTests : IDisposable
 
         dry.Digest.Should().Be(wet.Digest);
     }
+
+    [Fact]
+    public void UnmatchedFeatureStepsAreCountedInResult()
+    {
+        // Add a feature with a step that no [Given]/[When]/[Then] matches.
+        File.WriteAllText(Path.Combine(_root, "Features", "extra.feature"), """
+            Feature: Extra
+              Scenario: Mystery
+                Given I do something nobody coded
+            """);
+
+        var result = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance);
+
+        result.UnmatchedStepCount.Should().BeGreaterOrEqualTo(1);
+    }
 }
