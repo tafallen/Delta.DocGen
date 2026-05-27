@@ -19,7 +19,7 @@ public static class StepDefinitionExtractor
         string relativePath, string root, IDocGenLogger logger)
     {
         var fullPath = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
-        var text = File.ReadAllText(fullPath);
+        var text = File.ReadAllText(fullPath, System.Text.Encoding.UTF8);
         var compilationUnit = CSharpSyntaxTree.ParseText(text).GetCompilationUnitRoot();
 
         var steps = new List<RawStep>();

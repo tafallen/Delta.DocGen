@@ -16,7 +16,7 @@ public static class Discoverer
     /// Results are sorted ordinally for deterministic output.
     /// </summary>
     /// <exception cref="DirectoryNotFoundException">Thrown if <paramref name="root"/> does not exist.</exception>
-    public static DiscoveryResult Discover(string root, IReadOnlyList<string>? excludes)
+    public static DiscoveryResult Discover(string root, IReadOnlyList<string> excludes)
     {
         if (!Directory.Exists(root))
             throw new DirectoryNotFoundException($"Root directory does not exist: {root}");
@@ -29,7 +29,7 @@ public static class Discoverer
         matcher.AddInclude("*.feature");
         matcher.AddInclude("**/*.cs");
         matcher.AddInclude("**/*.feature");
-        foreach (var ex in excludes ?? [])
+        foreach (var ex in excludes)
             matcher.AddExclude(ex);
 
         var dir = new DirectoryInfoWrapper(new DirectoryInfo(root));

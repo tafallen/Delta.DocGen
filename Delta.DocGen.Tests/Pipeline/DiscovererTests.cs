@@ -98,11 +98,11 @@ public sealed class DiscovererTests : IDisposable
     }
 
     [Fact]
-    public void NullExcludesIsHandledSafely()
+    public void EmptyExcludesListFindsAllFiles()
     {
         Touch("Auth/AuthSteps.cs");
 
-        var result = Discoverer.Discover(_root, excludes: null);
+        var result = Discoverer.Discover(_root, excludes: []);
 
         result.CsFiles.Should().ContainSingle();
     }

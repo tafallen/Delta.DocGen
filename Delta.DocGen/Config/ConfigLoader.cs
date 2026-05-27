@@ -49,7 +49,7 @@ public static class ConfigLoader
             Root           = Path.GetFullPath(ResolveRequired(overrides.Root,   file.Root,   "root"),   configDir),
             Output         = Path.GetFullPath(ResolveRequired(overrides.Output, file.Output, "output"), configDir),
             LogVerbosity   = verbosity,
-            FallbackDomain = file.FallbackDomain ?? "General",
+            FallbackDomain = file.FallbackDomain ?? ConfigDefaults.FallbackDomain,
             Exclude        = excludes.AsReadOnly(),
             Domains        = MapDomains(file.Domains),
         };

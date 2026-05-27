@@ -380,6 +380,38 @@ public sealed class StepDefinitionExtractorTests : IDisposable
     }
 
     [Fact]
+    public void EmptyFileReturnsEmptyListWithoutException()
+    {
+        var path = WriteFile("Steps/Empty.cs", "");
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void MixedGivenAndWhenOnSameMethodProducesTwoSteps()
+    {
+        var path = WriteFile("Steps/MultiTypeStep.cs", """
+            using TechTalk.SpecFlow;
+            public class MySteps
+            {
+                [Given("I have logged in")]
+                [When("I am already logged in")]
+                public void LoggedIn() { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().HaveCount(2);
+        steps[0].Type.Should().Be(StepType.Given);
+        steps[0].Pattern.Should().Be("I have logged in");
+        steps[1].Type.Should().Be(StepType.When);
+        steps[1].Pattern.Should().Be("I am already logged in");
+    }
+
+    [Fact]
     public void ThrowsFileNotFoundForMissingFile()
     {
         var missing = "Steps.cs"; // directory (_root) exists, but file does not
