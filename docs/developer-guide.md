@@ -452,10 +452,10 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 
 | Stories | Status |
 |---------|--------|
-| 1–9 | ✅ Complete, merged to master, pushed to GitHub |
-| 10–15 | ⬜ Not started |
+| 1–10 | ✅ Complete, merged to master, pushed to GitHub |
+| 11–15 | ⬜ Not started |
 
-**Test count:** 77 passing (13 config, 9 discoverer, 16 extractor, 10 usage-counter, 7 domain-assigner, 7 id-generator, 5 story-7-extras)
+**Test count:** 88 passing (13 config, 9 discoverer, 16 extractor, 10 usage-counter, 7 domain-assigner, 7 id-generator, 5 canonical-json, 6 signer, 5 story-10-extras)
 
 ### Story-by-story status
 
@@ -470,21 +470,21 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 7 | Usage counting | `UsageCounter` (Gherkin) + tests | ✅ |
 | 8 | Domain assignment | `DomainAssigner` + tests | ✅ |
 | 9 | ID generation | `IdGenerator` + tests | ✅ |
-| 10 | Canonical JSON + signing | `CanonicalJson`, `Signer` + tests | ⬜ |
+| 10 | Canonical JSON + signing | `CanonicalJson`, `Signer` + tests | ✅ |
 | 11 | JSON Schema | `step-library.v1.schema.json`, `SchemaWriter` | ⬜ |
 | 12 | Pipeline runner | `PipelineRunner` (orchestrates stages 1–8) | ⬜ |
 | 13 | CLI wiring | `RootCommand.cs`, `Program.cs` | ⬜ |
 | 14 | Full test suite | All tests green, zero warnings | ⬜ |
 | 15 | End-to-end smoke test | Real fixture files, full run, output verified | ⬜ |
 
-### What's next — Story 10: Canonical JSON and signing
+### What's next — Story 11: JSON Schema
 
-The next story implements `CanonicalJson` and `Signer`. Key points:
+The next story implements the JSON Schema file and `SchemaWriter`. Key points:
 
-- `CanonicalJson.Serialise(object)` → `string`: serialise any object to compact JSON with all object keys sorted alphabetically (recursively). Uses `System.Text.Json.Nodes.JsonNode` internally.
-- `CanonicalJson.Write(Envelope, string outputPath)`: serialise the signed envelope as pretty-printed JSON and write to file, creating the output directory if absent.
-- `Signer.Sign(Envelope)` → `Envelope`: set `Signature = null`, serialise canonically (null fields omitted), SHA-256 hash the UTF-8 bytes, hex-encode, return envelope with `Signature = new SignatureRecord("SHA-256", digest)`.
-- The canonical options must use `DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull` so the `signature` field is absent from the bytes that are hashed.
+- The schema file is embedded as a resource: `Delta.DocGen/Output/Schema/Resources/step-library.v1.schema.json`
+- `SchemaWriter.Write(string outputDir)` extracts the embedded resource and writes it to `<outputDir>/schema/v1/step-library.schema.json`
+- The schema validates the envelope structure (version, domains, steps array, each step's required fields)
+- Story 11 only creates and validates the schema — the pipeline runner (Story 12) will call SchemaWriter
 
 ---
 
