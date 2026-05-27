@@ -13,6 +13,7 @@ public static class Discoverer
     /// <summary>
     /// Walks <paramref name="root"/> and returns relative paths (forward-slash separated)
     /// for all .cs and .feature files not matched by any exclude glob.
+    /// Results are sorted ordinally for deterministic output.
     /// </summary>
     /// <exception cref="DirectoryNotFoundException">Thrown if <paramref name="root"/> does not exist.</exception>
     public static DiscoveryResult Discover(string root, IReadOnlyList<string>? excludes)
@@ -21,6 +22,9 @@ public static class Discoverer
             throw new DirectoryNotFoundException($"Root directory does not exist: {root}");
 
         var matcher = new Matcher();
+        // Include root-level files and all nested files
+        matcher.AddInclude("*.cs");
+        matcher.AddInclude("*.feature");
         matcher.AddInclude("**/*.cs");
         matcher.AddInclude("**/*.feature");
         foreach (var ex in excludes ?? [])
@@ -42,6 +46,9 @@ public static class Discoverer
                 featureFiles.Add(relative);
         }
 
-        return new DiscoveryResult(csFiles.AsReadOnly(), featureFiles.AsReadOnly());
+        return new DiscoveryResult(
+            csFiles.OrderBy(f => f, StringComparer.Ordinal).ToList().AsReadOnly(),
+            featureFiles.OrderBy(f => f, StringComparer.Ordinal).ToList().AsReadOnly()
+        );
     }
 }

@@ -71,4 +71,48 @@ public sealed class DiscovererTests : IDisposable
         var act = () => Discoverer.Discover("/nonexistent/path", excludes: []);
         act.Should().Throw<DirectoryNotFoundException>().WithMessage("*does not exist*");
     }
+
+    [Fact]
+    public void FindsFilesAtRootLevel()
+    {
+        Touch("RootSteps.cs");
+        Touch("root.feature");
+
+        var result = Discoverer.Discover(_root, excludes: []);
+
+        result.CsFiles.Should().ContainSingle(f => f == "RootSteps.cs");
+        result.FeatureFiles.Should().ContainSingle(f => f == "root.feature");
+    }
+
+    [Fact]
+    public void ResultsAreSortedOrdinally()
+    {
+        Touch("Z/ZSteps.cs");
+        Touch("A/ASteps.cs");
+        Touch("M/MSteps.cs");
+
+        var result = Discoverer.Discover(_root, excludes: []);
+
+        result.CsFiles.Should().BeInAscendingOrder(StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void NullExcludesIsHandledSafely()
+    {
+        Touch("Auth/AuthSteps.cs");
+
+        var result = Discoverer.Discover(_root, excludes: null);
+
+        result.CsFiles.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void ExcludeGlobMatchingNothingIsHarmless()
+    {
+        Touch("Auth/AuthSteps.cs");
+
+        var result = Discoverer.Discover(_root, excludes: ["**/nonexistent/**"]);
+
+        result.CsFiles.Should().ContainSingle();
+    }
 }
