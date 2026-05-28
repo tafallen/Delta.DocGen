@@ -26,6 +26,10 @@ public static class StepDefinitionExtractor
 
         foreach (var method in compilationUnit.DescendantNodes().OfType<MethodDeclarationSyntax>())
         {
+            // Track (Type, Pattern) tuples seen on the current method so identical
+            // attributes stacked on the same method (a copy-paste duplicate) are emitted once.
+            var seenInMethod = new HashSet<(StepType, string)>();
+
             foreach (var attrList in method.AttributeLists)
             {
                 foreach (var attr in attrList.Attributes)
@@ -49,6 +53,15 @@ public static class StepDefinitionExtractor
                         logger.Warn($"[{name}] at {relativePath} has no matching StepType value — skipping.");
                         continue;
                     }
+
+                    if (!seenInMethod.Add((stepType, pattern)))
+                    {
+                        logger.Warn(
+                            $"Duplicate step attribute at {relativePath}:{line} — " +
+                            $"[{name}(\"{pattern}\")] already present on this method; skipping the duplicate.");
+                        continue;
+                    }
+
                     steps.Add(new RawStep(stepType, pattern, @params, relativePath, line, source));
                     logger.Verbose($"  [{name}] {pattern} at {relativePath}:{line}");
                 }

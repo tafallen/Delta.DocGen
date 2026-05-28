@@ -419,4 +419,50 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         act.Should().Throw<FileNotFoundException>();
     }
 
+    [Fact]
+    public void DuplicateAttributeOnSameMethodIsDedupedWithWarn()
+    {
+        // Two identical [Then(...)] attributes stacked on the same method —
+        // copy-paste duplicate. Emit one RawStep + Warn.
+        var logger = new CapturingDocGenLogger();
+        var path = WriteFile("DupStacked.cs", """
+            using Reqnroll;
+            public class DupStacked
+            {
+                [Then(@"a thing exists")]
+                [Then(@"a thing exists")]
+                public void ThenAThingExists() { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, logger);
+
+        steps.Should().ContainSingle()
+            .Which.Pattern.Should().Be("a thing exists");
+        logger.WarnMessages.Should().ContainSingle(m =>
+            m.Contains("Duplicate step attribute") && m.Contains("DupStacked.cs"));
+    }
+
+    [Fact]
+    public void DistinctTypesWithSamePatternOnSameMethodAreBothKept()
+    {
+        // [Given]+[Then] same pattern → two distinct RawSteps (different types).
+        var logger = new CapturingDocGenLogger();
+        var path = WriteFile("GivenAndThen.cs", """
+            using Reqnroll;
+            public class GivenAndThen
+            {
+                [Given(@"a thing exists")]
+                [Then(@"a thing exists")]
+                public void Method() { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, logger);
+
+        steps.Should().HaveCount(2);
+        steps.Should().Contain(s => s.Type == StepType.Given);
+        steps.Should().Contain(s => s.Type == StepType.Then);
+        logger.WarnMessages.Should().BeEmpty();
+    }
 }
