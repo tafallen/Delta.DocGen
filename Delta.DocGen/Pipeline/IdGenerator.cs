@@ -26,10 +26,14 @@ public static class IdGenerator
                         $"Duplicate step attribute on {step.File}:{step.Line} for pattern '{step.Pattern}' — skipping the duplicate.");
                     continue;
                 }
-                throw new InvalidOperationException(
-                    $"Step ID collision: '{id}' generated for both " +
+                // Cross-method collision = ambiguous binding in the user's Reqnroll project.
+                // The doc tool surfaces this loudly (Error) and skips the duplicate, rather
+                // than aborting the whole run — operators see every collision in one pass.
+                logger.Error(
+                    $"Ambiguous step binding: '{id}' generated for both " +
                     $"'{existing.Pattern}' ({existing.File}:{existing.Line}) and " +
-                    $"'{step.Pattern}' ({step.File}:{step.Line}).");
+                    $"'{step.Pattern}' ({step.File}:{step.Line}) — skipping the second binding.");
+                continue;
             }
             seenIds[id] = step;
 

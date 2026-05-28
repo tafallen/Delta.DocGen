@@ -108,9 +108,11 @@ public sealed class PipelineRunnerTests : IDisposable
     }
 
     [Fact]
-    public void PipelineCatchesIdCollisionAndReturnsFailedResult()
+    public void CrossMethodIdCollisionIsLoggedAsErrorButPipelineSucceeds()
     {
-        // Two [Given]s with identical pattern in the same domain → ID collision.
+        // Cross-method ID collision = ambiguous binding in the user's Reqnroll project.
+        // The doc tool logs Error, skips the duplicate, and continues — operators see
+        // every collision in one pass and still get a usable output file.
         File.WriteAllText(Path.Combine(_root, "Auth", "DuplicateSteps.cs"), """
             using Reqnroll;
             namespace Demo;
@@ -124,11 +126,9 @@ public sealed class PipelineRunnerTests : IDisposable
         var logger = new CapturingDocGenLogger();
         var result = PipelineRunner.Run(BuildConfig(), logger);
 
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().NotBeNullOrEmpty();
-        result.ErrorMessage.Should().Contain("collision");
-        logger.ErrorMessages.Should().ContainSingle(m => m.Contains("collision"));
-        File.Exists(_output).Should().BeFalse();
+        result.Success.Should().BeTrue();
+        logger.ErrorMessages.Should().ContainSingle(m => m.Contains("Ambiguous step binding"));
+        File.Exists(_output).Should().BeTrue();
     }
 
     [Fact]
@@ -165,8 +165,10 @@ public sealed class PipelineRunnerTests : IDisposable
     }
 
     [Fact]
-    public void InternalErrorFromIdCollisionMapsToInternalErrorCategory()
+    public void CrossMethodIdCollisionDoesNotSetFailureCategory()
     {
+        // After the policy change, ID collisions no longer abort the run — the pipeline
+        // succeeds and the FailureCategory stays None. The Error log is the audit trail.
         File.WriteAllText(Path.Combine(_root, "Auth", "DuplicateSteps.cs"), """
             using Reqnroll;
             namespace Demo;
@@ -179,8 +181,8 @@ public sealed class PipelineRunnerTests : IDisposable
 
         var result = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance);
 
-        result.Success.Should().BeFalse();
-        result.FailureCategory.Should().Be(FailureCategory.InternalError);
+        result.Success.Should().BeTrue();
+        result.FailureCategory.Should().Be(FailureCategory.None);
     }
 
     [Fact]

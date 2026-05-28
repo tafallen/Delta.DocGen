@@ -77,18 +77,26 @@ public sealed class IdGeneratorTests
     }
 
     [Fact]
-    public void DuplicatePatternSameTypeSameDomainThrowsInvalidOperationException()
+    public void CrossMethodCollisionLogsErrorAndSkipsDuplicate()
     {
-        // Same pattern, same domain, SAME type → genuine collision (broken bindings).
+        // Same pattern + domain + type across two DIFFERENT methods (different lines) is a
+        // genuine ambiguous-binding defect in the user's Reqnroll project. The doc tool
+        // logs Error, skips the second binding, and continues — operators see every
+        // collision in one pass instead of fixing them one-at-a-time.
+        var logger = new CapturingDocGenLogger();
         var steps = new List<RawStep>
         {
             new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs",  1, "", "Auth"),
             new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 10, "", "Auth"),
         };
 
-        var act = () => IdGenerator.AssignIds(steps, new Dictionary<string, int>(), NullDocGenLogger.Instance);
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), logger);
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*collision*");
+        records.Should().ContainSingle();
+        logger.ErrorMessages.Should().ContainSingle(m =>
+            m.Contains("Ambiguous step binding")
+            && m.Contains("Auth/AuthSteps.cs:1")
+            && m.Contains("Auth/AuthSteps.cs:10"));
     }
 
     [Fact]

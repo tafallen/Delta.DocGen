@@ -147,9 +147,10 @@ public sealed class CliRunnerTests : IDisposable
     }
 
     [Fact]
-    public void InternalErrorReturnsExitCodeTwo()
+    public void CrossMethodCollisionStillReturnsZero()
     {
-        // ID collision = InternalError category = exit code 2.
+        // ID collisions are now logged as Error and skipped — the CLI returns 0 because
+        // a usable JSON file was still produced. The Error log surfaces the defect.
         File.WriteAllText(Path.Combine(_root, "Auth", "DuplicateSteps.cs"), """
             using Reqnroll;
             namespace Demo;
@@ -165,7 +166,8 @@ public sealed class CliRunnerTests : IDisposable
             Root: null, Output: null, Excludes: [],
             Verbosity: "silent", DryRun: false));
 
-        exitCode.Should().Be(2);
+        exitCode.Should().Be(0);
+        File.Exists(_output).Should().BeTrue();
     }
 
     [Fact]
