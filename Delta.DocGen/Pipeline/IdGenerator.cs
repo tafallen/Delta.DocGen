@@ -17,7 +17,7 @@ public static class IdGenerator
 
         foreach (var step in steps)
         {
-            var id = BuildId(step.Domain, step.Pattern, logger);
+            var id = BuildId(step.Type, step.Domain, step.Pattern, logger);
             if (seenIds.TryGetValue(id, out var existingPattern))
                 throw new InvalidOperationException(
                     $"Step ID collision: '{id}' generated for both '{existingPattern}' and '{step.Pattern}'.");
@@ -43,8 +43,8 @@ public static class IdGenerator
         return records.AsReadOnly();
     }
 
-    private static string BuildId(string domain, string pattern, IDocGenLogger logger)
-        => $"{DomainPrefix(domain, logger)}-{PatternHash(pattern)}";
+    private static string BuildId(StepType type, string domain, string pattern, IDocGenLogger logger)
+        => $"{DomainPrefix(domain, logger)}-{PatternHash(type, pattern)}";
 
     internal static string DomainPrefix(string domain, IDocGenLogger? logger = null)
     {
@@ -63,10 +63,11 @@ public static class IdGenerator
         return result;
     }
 
-    internal static string PatternHash(string pattern)
+    internal static string PatternHash(StepType type, string pattern)
     {
-        var normalized = pattern.Trim().Normalize(System.Text.NormalizationForm.FormC).ToLowerInvariant();
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
+        var normalised = pattern.Trim().Normalize(System.Text.NormalizationForm.FormC).ToLowerInvariant();
+        var input = $"{type}:{normalised}";
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(bytes)[..8].ToLowerInvariant();
     }
 }

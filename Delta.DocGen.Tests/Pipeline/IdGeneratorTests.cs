@@ -77,18 +77,37 @@ public sealed class IdGeneratorTests
     }
 
     [Fact]
-    public void DuplicatePatternInSameDomainThrowsInvalidOperationException()
+    public void DuplicatePatternSameTypeSameDomainThrowsInvalidOperationException()
     {
-        // Same pattern, same domain = same ID = collision.
+        // Same pattern, same domain, SAME type → genuine collision (broken bindings).
         var steps = new List<RawStep>
         {
             new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs",  1, "", "Auth"),
-            new(StepType.When,  "I am logged in", [], "Auth/AuthSteps.cs", 10, "", "Auth"),
+            new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 10, "", "Auth"),
         };
 
         var act = () => IdGenerator.AssignIds(steps, new Dictionary<string, int>(), NullDocGenLogger.Instance);
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*collision*");
+    }
+
+    [Fact]
+    public void SamePatternDifferentTypeProducesDistinctIds()
+    {
+        // A single Reqnroll method with [Given] + [Then] attrs on the same pattern
+        // is a valid pattern — both should appear in the output with distinct IDs.
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "the contract does not exist", [], "Auth/AuthSteps.cs", 1, "", "Auth"),
+            new(StepType.Then,  "the contract does not exist", [], "Auth/AuthSteps.cs", 1, "", "Auth"),
+        };
+
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), NullDocGenLogger.Instance);
+
+        records.Should().HaveCount(2);
+        records[0].Id.Should().NotBe(records[1].Id);
+        records[0].Type.Should().Be(StepType.Given);
+        records[1].Type.Should().Be(StepType.Then);
     }
 
     [Fact]
