@@ -452,10 +452,11 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 
 | Stories | Status |
 |---------|--------|
-| 1–14 | ✅ Complete, merged to master, pushed to GitHub |
-| 15   | ⬜ Not started |
+| 1–15 | ✅ Complete, merged to master, pushed to GitHub |
 
-**Test count:** 130 passing (Stories 1–14 + TD-C/D debt fixes)
+**Test count:** 134 passing (Stories 1–15 + TD-C/D debt fixes + smoke-test-driven fixes)
+
+**Smoke test:** Validated end-to-end against a real 1,256-file Reqnroll codebase (`C:\dev\triangle\Step Definitions`). Produced 5.8 MB signed JSON in ~9 min. See `docs/superpowers/specs/2026-05-28-story-15-smoke-test-results.md`.
 
 ### Story-by-story status
 
@@ -475,17 +476,18 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 12 | Pipeline runner | `PipelineRunner` (orchestrates stages 1–8) | ✅ |
 | 13 | CLI wiring | `RootCommand.cs`, `Program.cs` | ✅ |
 | 14 | Full test suite | All tests green, zero warnings | ✅ |
-| 15 | End-to-end smoke test | Real fixture files, full run, output verified | ⬜ |
+| 15 | End-to-end smoke test | Real fixture files, full run, output verified | ✅ |
 
-### What's next — Story 15: End-to-end smoke test
+### Project complete — V1 ready
 
-The final story validates the tool against a real (small) Reqnroll project:
+All 15 stories closed. Story 15 was satisfied by a live smoke test against a real 1,256-file Reqnroll codebase rather than a synthetic fixture — that test produced a valid 5.8 MB signed JSON output and uncovered four real bugs in the doc tool which were fixed in flight. Full retrospective in `docs/superpowers/specs/2026-05-28-story-15-smoke-test-results.md`.
 
-- Create a fixture under `Delta.DocGen.Tests/EndToEnd/Fixtures/` with a representative project (2–4 step classes, 2–3 feature files, mixed Given/When/Then/Background)
-- Run the full CLI (`CliRunner.Run`) against the fixture
-- Assert the produced JSON validates against the embedded schema (re-use `SchemaValidationTests` patterns)
-- Re-canonicalise the envelope (strip signature) and confirm the SHA-256 matches `signature.digest`
-- Assert specific step IDs, usage counts, and domain assignments match expectations
+**Possible follow-ups (not blocking V1):**
+
+- Performance: parallel file parsing (currently sequential — 9 min on 1,256 files)
+- LLM enrichment pass for V2 (`description`, `tags`, `params[].example`, `suggestsNext`)
+- Viewer/web UI to consume the JSON output
+- Address remaining deferred tech-debt items in `docs/tech-debt.md` Phase 4 tables
 
 ---
 
