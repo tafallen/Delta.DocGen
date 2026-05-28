@@ -126,6 +126,26 @@ public sealed class IdGeneratorTests
     }
 
     [Fact]
+    public void ExactDuplicateAttributeOnSameMethodLogsWarnAndSkips()
+    {
+        // Two identical [Then] attributes on a single method — copy-paste duplicate.
+        // Same Type + Pattern + File + Line as the original means this is dead code, not a
+        // real binding collision. Log a warning and skip the duplicate.
+        var logger = new CapturingDocGenLogger();
+        var steps = new List<RawStep>
+        {
+            new(StepType.Then, "a credit contract called \"X\" exists", [], "Auth/AuthSteps.cs", 46, "", "Auth"),
+            new(StepType.Then, "a credit contract called \"X\" exists", [], "Auth/AuthSteps.cs", 46, "", "Auth"),
+        };
+
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), logger);
+
+        records.Should().ContainSingle();
+        logger.WarnMessages.Should().ContainSingle(m =>
+            m.Contains("Duplicate step attribute") && m.Contains("Auth/AuthSteps.cs:46"));
+    }
+
+    [Fact]
     public void NfcAndNfdFormsOfSamePatternProduceSameId()
     {
         // "café" can be encoded as NFC (é = U+00E9) or NFD (e + U+0301).

@@ -12,16 +12,26 @@ public static class IdGenerator
         IReadOnlyDictionary<string, int> usageCounts,
         IDocGenLogger logger)
     {
-        var seenIds = new Dictionary<string, string>(StringComparer.Ordinal);
+        var seenIds = new Dictionary<string, RawStep>(StringComparer.Ordinal);
         var records = new List<StepRecord>(steps.Count);
 
         foreach (var step in steps)
         {
             var id = BuildId(step.Type, step.Domain, step.Pattern, logger);
-            if (seenIds.TryGetValue(id, out var existingPattern))
+            if (seenIds.TryGetValue(id, out var existing))
+            {
+                if (existing.File == step.File && existing.Line == step.Line)
+                {
+                    logger.Warn(
+                        $"Duplicate step attribute on {step.File}:{step.Line} for pattern '{step.Pattern}' — skipping the duplicate.");
+                    continue;
+                }
                 throw new InvalidOperationException(
-                    $"Step ID collision: '{id}' generated for both '{existingPattern}' and '{step.Pattern}'.");
-            seenIds[id] = step.Pattern;
+                    $"Step ID collision: '{id}' generated for both " +
+                    $"'{existing.Pattern}' ({existing.File}:{existing.Line}) and " +
+                    $"'{step.Pattern}' ({step.File}:{step.Line}).");
+            }
+            seenIds[id] = step;
 
             var used = usageCounts.TryGetValue(step.Pattern, out var count) ? count : 0;
             records.Add(new StepRecord(
