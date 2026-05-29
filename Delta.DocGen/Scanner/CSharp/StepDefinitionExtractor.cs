@@ -45,6 +45,9 @@ public static class StepDefinitionExtractor
                     }
 
                     var @params = ExtractParams(method.ParameterList, pattern, logger);
+                    var declaredColumns = ResolveDeclaredColumns(method, compilationUnit);
+                    if (declaredColumns is not null)
+                        @params = AttachColumnsToFirstTable(@params, declaredColumns);
                     var line = attr.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
                     var source = method.ToString();
 
@@ -126,8 +129,11 @@ public static class StepDefinitionExtractor
                     break;
                 case "Table":
                 case "DataTable":
+                    schemaType = ParamTypes.Table;
+                    example = "";
+                    break;
                 case "ScenarioContext":
-                    // Known Reqnroll/SpecFlow injection types passed by the framework, not bound to a placeholder.
+                    // Known Reqnroll/SpecFlow injection type passed by the framework, not bound to a placeholder.
                     schemaType = ParamTypes.String;
                     example = "";
                     break;
@@ -142,6 +148,70 @@ public static class StepDefinitionExtractor
             result.Add(new ParamRecord(name, schemaType, example));
         }
 
+        return result.AsReadOnly();
+    }
+
+    private static IReadOnlyList<ColumnRecord>? ResolveDeclaredColumns(
+        MethodDeclarationSyntax method, CompilationUnitSyntax compilationUnit)
+    {
+        if (method.Body is null && method.ExpressionBody is null) return null;
+
+        var generics = method.DescendantNodes()
+            .OfType<GenericNameSyntax>()
+            .Where(g => g.Identifier.Text is "CreateSet" or "CreateInstance"
+                     && g.TypeArgumentList.Arguments.Count == 1)
+            .ToList();
+
+        foreach (var generic in generics)
+        {
+            var typeName = generic.TypeArgumentList.Arguments[0].ToString();
+            // Strip namespace qualifier; keep the simple name.
+            var simpleName = typeName.Contains('.') ? typeName[(typeName.LastIndexOf('.') + 1)..] : typeName;
+
+            var typeDecl = compilationUnit.DescendantNodes()
+                .OfType<TypeDeclarationSyntax>()
+                .FirstOrDefault(t => t.Identifier.Text == simpleName);
+            if (typeDecl is null) continue;
+
+            var columns = typeDecl.Members
+                .OfType<PropertyDeclarationSyntax>()
+                .Where(IsPublicOrDefaultAccess)
+                .Select(p => new ColumnRecord(p.Identifier.Text, p.Type.ToString()))
+                .ToList();
+            if (columns.Count > 0) return columns.AsReadOnly();
+        }
+
+        return null;
+    }
+
+    private static bool IsPublicOrDefaultAccess(PropertyDeclarationSyntax p)
+    {
+        var mods = p.Modifiers;
+        if (mods.Any(m => m.IsKind(SyntaxKind.PublicKeyword))) return true;
+        if (mods.Any(m => m.IsKind(SyntaxKind.PrivateKeyword)
+                       || m.IsKind(SyntaxKind.ProtectedKeyword)
+                       || m.IsKind(SyntaxKind.InternalKeyword))) return false;
+        // No explicit accessor → default to public for top-level types (heuristic; good enough for typed table models).
+        return true;
+    }
+
+    private static IReadOnlyList<ParamRecord> AttachColumnsToFirstTable(
+        IReadOnlyList<ParamRecord> @params, IReadOnlyList<ColumnRecord> columns)
+    {
+        var result = new List<ParamRecord>(@params.Count);
+        var attached = false;
+        foreach (var p in @params)
+        {
+            if (!attached && p.Type == ParamTypes.Table)
+            {
+                result.Add(p with { Columns = columns });
+                attached = true;
+            }
+            else
+            {
+                result.Add(p);
+            }
+        }
         return result.AsReadOnly();
     }
 }

@@ -293,7 +293,7 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
 
         steps.Should().ContainSingle();
-        steps[0].Params.Should().ContainSingle(p => p.Type == ParamTypes.String && p.Name == "table");
+        steps[0].Params.Should().ContainSingle(p => p.Type == ParamTypes.Table && p.Name == "table");
     }
 
     [Fact]
@@ -374,7 +374,7 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         steps[0].Params[0].Name.Should().Be("count");
         steps[0].Params[0].Type.Should().Be(ParamTypes.Int);
         steps[0].Params[1].Name.Should().Be("table");
-        steps[0].Params[1].Type.Should().Be(ParamTypes.String);
+        steps[0].Params[1].Type.Should().Be(ParamTypes.Table);
         steps[0].Params[2].Name.Should().Be("body");
         steps[0].Params[2].Type.Should().Be(ParamTypes.DocString);
     }
@@ -464,5 +464,114 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         steps.Should().Contain(s => s.Type == StepType.Given);
         steps.Should().Contain(s => s.Type == StepType.Then);
         logger.WarnMessages.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TableParamWithoutAnnotationGetsTypeTableAndNullColumns()
+    {
+        var path = WriteFile("Table.cs", """
+            using Reqnroll;
+            public class Steps
+            {
+                [Given("the contracts exist")]
+                public void GivenContractsExist(Table contracts) { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        var p = steps[0].Params.Single();
+        p.Name.Should().Be("contracts");
+        p.Type.Should().Be(ParamTypes.Table);
+        p.Columns.Should().BeNull();  // no annotation → no declared columns
+    }
+
+    [Fact]
+    public void TableParamWithCreateSetResolvesSameFileType()
+    {
+        var path = WriteFile("CreateSet.cs", """
+            using System;
+            using Reqnroll;
+
+            public sealed class Contract
+            {
+                public int Id { get; set; }
+                public string Symbol { get; set; } = "";
+                public DateTime Occurred { get; set; }
+            }
+
+            public class Steps
+            {
+                [Given("the contracts exist")]
+                public void GivenContractsExist(Table contracts)
+                {
+                    var rows = contracts.CreateSet<Contract>();
+                }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        var p = steps[0].Params.Single();
+        p.Type.Should().Be(ParamTypes.Table);
+        p.Columns.Should().NotBeNull();
+        p.Columns!.Should().HaveCount(3);
+        p.Columns![0].Name.Should().Be("Id");
+        p.Columns![0].Type.Should().Be("int");
+        p.Columns![1].Name.Should().Be("Symbol");
+        p.Columns![1].Type.Should().Be("string");
+        p.Columns![2].Name.Should().Be("Occurred");
+        p.Columns![2].Type.Should().Be("DateTime");
+    }
+
+    [Fact]
+    public void TableParamWithCreateInstanceResolvesSameFileType()
+    {
+        var path = WriteFile("CreateInstance.cs", """
+            using Reqnroll;
+
+            public sealed class Order { public decimal Amount { get; set; } }
+
+            public class Steps
+            {
+                [Given("an order exists")]
+                public void GivenAnOrderExists(Table order)
+                {
+                    var instance = order.CreateInstance<Order>();
+                }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        var p = steps[0].Params.Single();
+        p.Type.Should().Be(ParamTypes.Table);
+        p.Columns!.Should().ContainSingle();
+        p.Columns![0].Name.Should().Be("Amount");
+        p.Columns![0].Type.Should().Be("decimal");
+    }
+
+    [Fact]
+    public void TableParamWithCrossFileCreateSetFallsBackToNullColumns()
+    {
+        var path = WriteFile("CrossFile.cs", """
+            using Reqnroll;
+            public class Steps
+            {
+                [Given("the cross-file items exist")]
+                public void GivenItemsExist(Table items)
+                {
+                    // CrossFileType is not declared in this file.
+                    var rows = items.CreateSet<CrossFileType>();
+                }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        var p = steps[0].Params.Single();
+        p.Type.Should().Be(ParamTypes.Table);
+        p.Columns.Should().BeNull();
     }
 }
