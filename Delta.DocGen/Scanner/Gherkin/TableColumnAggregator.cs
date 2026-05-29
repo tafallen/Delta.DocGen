@@ -63,15 +63,35 @@ public static class TableColumnAggregator
         }
 
         var result = new Dictionary<string, IReadOnlyList<ColumnRecord>>(StringComparer.Ordinal);
-        foreach (var (pattern, _) in observations)
+        foreach (var (pattern, perColumn) in observations)
         {
             var ordered = headerOrder[pattern];
-            // Task 3: string-only types. Task 4 will narrow each column based on observed values.
-            result[pattern] = ordered.Select(name => new ColumnRecord(name, ParamTypes.String))
-                                     .ToList().AsReadOnly();
+            var records = new List<ColumnRecord>(ordered.Count);
+            foreach (var colName in ordered)
+            {
+                var values = perColumn.TryGetValue(colName, out var v) ? v : new List<string>();
+                var nonEmpty = values.Where(s => !string.IsNullOrEmpty(s)).ToList();
+                records.Add(new ColumnRecord(colName, InferType(nonEmpty)));
+            }
+            result[pattern] = records.AsReadOnly();
         }
         logger.Info($"Table column aggregation complete: {result.Count} step pattern(s) with observed columns.");
         return result;
+    }
+
+    private static string InferType(IReadOnlyList<string> values)
+    {
+        if (values.Count < 2) return ParamTypes.String;
+        var invariant = System.Globalization.CultureInfo.InvariantCulture;
+        if (values.All(v => int.TryParse(v, System.Globalization.NumberStyles.Integer, invariant, out _)))
+            return ParamTypes.Int;
+        if (values.All(v => decimal.TryParse(v, System.Globalization.NumberStyles.Number, invariant, out _)))
+            return ParamTypes.Decimal;
+        if (values.All(v => bool.TryParse(v, out _)))
+            return ParamTypes.Bool;
+        if (values.All(v => DateTime.TryParse(v, invariant, System.Globalization.DateTimeStyles.None, out _)))
+            return ParamTypes.Date;
+        return ParamTypes.String;
     }
 
     private static void ObserveSteps(
