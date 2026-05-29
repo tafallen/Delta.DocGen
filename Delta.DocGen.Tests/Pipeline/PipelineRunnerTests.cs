@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Delta.DocGen.Config;
 using Delta.DocGen.Logging;
 using Delta.DocGen.Pipeline;
@@ -201,5 +202,77 @@ public sealed class PipelineRunnerTests : IDisposable
         PipelineRunner.Run(BuildConfig(), logger, dryRun: true);
 
         logger.VerboseMessages.Should().ContainSingle(m => m.Contains("$schema") && m.Contains("Dry-run"));
+    }
+
+    [Fact]
+    public void PipelineEmitsTableColumnsFromCreateSetAnnotation()
+    {
+        File.WriteAllText(Path.Combine(_root, "Auth", "TableSteps.cs"), """
+            using Reqnroll;
+
+            public sealed class Contract
+            {
+                public int Id { get; set; }
+                public string Symbol { get; set; } = "";
+            }
+
+            public class TableSteps
+            {
+                [Given("the contracts exist")]
+                public void GivenContractsExist(Table contracts)
+                {
+                    var rows = contracts.CreateSet<Contract>();
+                }
+            }
+            """);
+
+        var result = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance);
+
+        result.Success.Should().BeTrue();
+        var json = JsonDocument.Parse(File.ReadAllText(_output));
+        var step = json.RootElement.GetProperty("steps").EnumerateArray()
+            .Single(s => s.GetProperty("pattern").GetString() == "the contracts exist");
+        var tableParam = step.GetProperty("params")[0];
+        tableParam.GetProperty("type").GetString().Should().Be("table");
+        var columns = tableParam.GetProperty("columns").EnumerateArray().ToList();
+        columns.Should().HaveCount(2);
+        columns[0].GetProperty("name").GetString().Should().Be("Id");
+        columns[0].GetProperty("type").GetString().Should().Be("int");
+        columns[1].GetProperty("name").GetString().Should().Be("Symbol");
+        columns[1].GetProperty("type").GetString().Should().Be("string");
+    }
+
+    [Fact]
+    public void PipelineEmitsObservedTableColumnsWhenNoAnnotation()
+    {
+        File.WriteAllText(Path.Combine(_root, "Auth", "NoAnnotation.cs"), """
+            using Reqnroll;
+            public class NoAnnotation
+            {
+                [Given("the rows exist")]
+                public void GivenRowsExist(Table rows) { }
+            }
+            """);
+        File.WriteAllText(Path.Combine(_root, "Features", "rows.feature"), """
+            Feature: Rows
+              Scenario: Sample
+                Given the rows exist
+                  | Id | Name |
+                  | 1  | A    |
+                  | 2  | B    |
+            """);
+
+        var result = PipelineRunner.Run(BuildConfig(), NullDocGenLogger.Instance);
+
+        result.Success.Should().BeTrue();
+        var json = JsonDocument.Parse(File.ReadAllText(_output));
+        var step = json.RootElement.GetProperty("steps").EnumerateArray()
+            .Single(s => s.GetProperty("pattern").GetString() == "the rows exist");
+        var columns = step.GetProperty("params")[0].GetProperty("columns").EnumerateArray().ToList();
+        columns.Should().HaveCount(2);
+        columns[0].GetProperty("name").GetString().Should().Be("Id");
+        columns[0].GetProperty("type").GetString().Should().Be("int");
+        columns[1].GetProperty("name").GetString().Should().Be("Name");
+        columns[1].GetProperty("type").GetString().Should().Be("string");
     }
 }

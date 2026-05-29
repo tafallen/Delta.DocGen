@@ -80,6 +80,10 @@ public static class PipelineRunner
                         totalUsage[pattern] += count;
             }
 
+            // Stage 4b: observed table columns
+            var observedColumns = TableColumnAggregator.Aggregate(
+                rawSteps, discovery.FeatureFiles, config.Root, unmatchedCounter);
+
             // Stage 5: domain assignment
             var domainAssigned = DomainAssigner.Assign(
                 rawSteps, config.Domains, config.FallbackDomain, unmatchedCounter);
@@ -88,7 +92,7 @@ public static class PipelineRunner
             var stepRecords = IdGenerator.AssignIds(
                 domainAssigned,
                 totalUsage,
-                new Dictionary<string, IReadOnlyList<ColumnRecord>>(),  // wired in Task 7
+                observedColumns,
                 unmatchedCounter);
             var domainRecords = DomainBuilder.Build(domainAssigned, config.Domains);
 
