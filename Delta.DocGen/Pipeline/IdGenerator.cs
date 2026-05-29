@@ -10,6 +10,7 @@ public static class IdGenerator
     public static IReadOnlyList<StepRecord> AssignIds(
         IReadOnlyList<RawStep> steps,
         IReadOnlyDictionary<string, int> usageCounts,
+        IReadOnlyDictionary<string, IReadOnlyList<ColumnRecord>> observedColumns,
         IDocGenLogger logger)
     {
         var seenIds = new Dictionary<string, RawStep>(StringComparer.Ordinal);
@@ -38,11 +39,12 @@ public static class IdGenerator
             seenIds[id] = step;
 
             var used = usageCounts.TryGetValue(step.Pattern, out var count) ? count : 0;
+            var obs = observedColumns.TryGetValue(step.Pattern, out var o) ? o : null;
             records.Add(new StepRecord(
                 Id:          id,
                 Type:        step.Type,
                 Pattern:     step.Pattern,
-                Params:      step.Params,
+                Params:      MergeColumns(step.Params, obs, logger),
                 File:        step.File,
                 Line:        step.Line,
                 Domain:      step.Domain,
@@ -55,6 +57,56 @@ public static class IdGenerator
 
         logger.Info($"ID generation complete: {records.Count} step(s) processed.");
         return records.AsReadOnly();
+    }
+
+    private static IReadOnlyList<ParamRecord> MergeColumns(
+        IReadOnlyList<ParamRecord> @params,
+        IReadOnlyList<ColumnRecord>? observed,
+        IDocGenLogger logger)
+    {
+        var result = new List<ParamRecord>(@params.Count);
+        var observedAttached = false;
+        foreach (var p in @params)
+        {
+            if (p.Type != ParamTypes.Table)
+            {
+                result.Add(p);
+                continue;
+            }
+
+            if (p.Columns is { Count: > 0 } declared)
+            {
+                if (observed is not null && !observedAttached)
+                {
+                    var declaredNames = new HashSet<string>(declared.Select(c => c.Name), StringComparer.Ordinal);
+                    var extra = observed.Where(o => !declaredNames.Contains(o.Name)).ToList();
+                    if (extra.Count > 0)
+                    {
+                        logger.Verbose(
+                            $"Observed columns not in declared type: {string.Join(", ", extra.Select(e => e.Name))} — appending as observed-string.");
+                        var merged = declared.Concat(extra.Select(e => new ColumnRecord(e.Name, "string"))).ToList();
+                        result.Add(p with { Columns = merged.AsReadOnly() });
+                        observedAttached = true;
+                        continue;
+                    }
+                }
+                result.Add(p);  // declared as-is
+                observedAttached = true;
+            }
+            else
+            {
+                if (observed is not null && !observedAttached)
+                {
+                    result.Add(p with { Columns = observed });
+                    observedAttached = true;
+                }
+                else
+                {
+                    result.Add(p with { Columns = Array.Empty<ColumnRecord>() });
+                }
+            }
+        }
+        return result.AsReadOnly();
     }
 
     private static string BuildId(StepType type, string domain, string pattern, IDocGenLogger logger)

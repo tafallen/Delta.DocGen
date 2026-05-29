@@ -85,7 +85,11 @@ public static class PipelineRunner
                 rawSteps, config.Domains, config.FallbackDomain, unmatchedCounter);
 
             // Stage 6: id generation + domain records
-            var stepRecords = IdGenerator.AssignIds(domainAssigned, totalUsage, unmatchedCounter);
+            var stepRecords = IdGenerator.AssignIds(
+                domainAssigned,
+                totalUsage,
+                new Dictionary<string, IReadOnlyList<ColumnRecord>>(),  // wired in Task 7
+                unmatchedCounter);
             var domainRecords = DomainBuilder.Build(domainAssigned, config.Domains);
 
             // Stage 7: build + sign envelope

@@ -20,7 +20,7 @@ public sealed class IdGeneratorTests
         };
         var usageCounts = new Dictionary<string, int> { ["I am logged in"] = 3 };
 
-        var records = IdGenerator.AssignIds(steps, usageCounts, NullDocGenLogger.Instance);
+        var records = IdGenerator.AssignIds(steps, usageCounts, new Dictionary<string, IReadOnlyList<ColumnRecord>>(), NullDocGenLogger.Instance);
 
         records.Should().ContainSingle();
         var r = records[0];
@@ -45,7 +45,7 @@ public sealed class IdGeneratorTests
             new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "", "Auth")
         };
 
-        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), NullDocGenLogger.Instance);
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), new Dictionary<string, IReadOnlyList<ColumnRecord>>(), NullDocGenLogger.Instance);
 
         records[0].Used.Should().Be(0);
     }
@@ -58,7 +58,7 @@ public sealed class IdGeneratorTests
             new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 1, "", "Auth")
         };
 
-        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), NullDocGenLogger.Instance);
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), new Dictionary<string, IReadOnlyList<ColumnRecord>>(), NullDocGenLogger.Instance);
 
         records[0].Id.Should().MatchRegex(@"^auth-[0-9a-f]{8}$");
     }
@@ -70,8 +70,8 @@ public sealed class IdGeneratorTests
         var step1 = new RawStep(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs",    1,  "", "Auth");
         var step2 = new RawStep(StepType.Given, "I am logged in", [], "Auth/NewAuthSteps.cs", 99, "", "Auth");
 
-        var r1 = IdGenerator.AssignIds([step1], new Dictionary<string, int>(), NullDocGenLogger.Instance);
-        var r2 = IdGenerator.AssignIds([step2], new Dictionary<string, int>(), NullDocGenLogger.Instance);
+        var r1 = IdGenerator.AssignIds([step1], new Dictionary<string, int>(), new Dictionary<string, IReadOnlyList<ColumnRecord>>(), NullDocGenLogger.Instance);
+        var r2 = IdGenerator.AssignIds([step2], new Dictionary<string, int>(), new Dictionary<string, IReadOnlyList<ColumnRecord>>(), NullDocGenLogger.Instance);
 
         r1[0].Id.Should().Be(r2[0].Id);
     }
@@ -90,7 +90,7 @@ public sealed class IdGeneratorTests
             new(StepType.Given, "I am logged in", [], "Auth/AuthSteps.cs", 10, "", "Auth"),
         };
 
-        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), logger);
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), new Dictionary<string, IReadOnlyList<ColumnRecord>>(), logger);
 
         records.Should().ContainSingle();
         logger.ErrorMessages.Should().ContainSingle(m =>
@@ -110,7 +110,7 @@ public sealed class IdGeneratorTests
             new(StepType.Then,  "the contract does not exist", [], "Auth/AuthSteps.cs", 1, "", "Auth"),
         };
 
-        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), NullDocGenLogger.Instance);
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), new Dictionary<string, IReadOnlyList<ColumnRecord>>(), NullDocGenLogger.Instance);
 
         records.Should().HaveCount(2);
         records[0].Id.Should().NotBe(records[1].Id);
@@ -127,7 +127,7 @@ public sealed class IdGeneratorTests
             new(StepType.Given, "I am logged in", [], "Other/OtherSteps.cs", 1, "", "認証")
         };
 
-        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), logger);
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), new Dictionary<string, IReadOnlyList<ColumnRecord>>(), logger);
 
         records[0].Id.Should().StartWith("unknown-");
         logger.WarnMessages.Should().ContainSingle(m => m.Contains("認証") && m.Contains("unknown"));
@@ -146,7 +146,7 @@ public sealed class IdGeneratorTests
             new(StepType.Then, "a credit contract called \"X\" exists", [], "Auth/AuthSteps.cs", 46, "", "Auth"),
         };
 
-        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), logger);
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), new Dictionary<string, IReadOnlyList<ColumnRecord>>(), logger);
 
         records.Should().ContainSingle();
         logger.WarnMessages.Should().ContainSingle(m =>
@@ -164,9 +164,99 @@ public sealed class IdGeneratorTests
         var stepNfc = new RawStep(StepType.Given, nfc, [], "Auth/AuthSteps.cs", 1, "", "Auth");
         var stepNfd = new RawStep(StepType.Given, nfd, [], "Auth/AuthSteps.cs", 2, "", "Auth");
 
-        var r1 = IdGenerator.AssignIds([stepNfc], new Dictionary<string, int>(), NullDocGenLogger.Instance);
-        var r2 = IdGenerator.AssignIds([stepNfd], new Dictionary<string, int>(), NullDocGenLogger.Instance);
+        var r1 = IdGenerator.AssignIds([stepNfc], new Dictionary<string, int>(), new Dictionary<string, IReadOnlyList<ColumnRecord>>(), NullDocGenLogger.Instance);
+        var r2 = IdGenerator.AssignIds([stepNfd], new Dictionary<string, int>(), new Dictionary<string, IReadOnlyList<ColumnRecord>>(), NullDocGenLogger.Instance);
 
         r1[0].Id.Should().Be(r2[0].Id);
+    }
+
+    [Fact]
+    public void DeclaredColumnsAreEmittedWhenPresent()
+    {
+        var declared = new List<ColumnRecord> { new("Id", "int"), new("Symbol", "string") };
+        var tableParam = new ParamRecord("contracts", ParamTypes.Table, "", declared);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "the contracts exist", [tableParam], "Steps.cs", 1, "", "Auth")
+        };
+
+        var records = IdGenerator.AssignIds(
+            steps,
+            new Dictionary<string, int>(),
+            new Dictionary<string, IReadOnlyList<ColumnRecord>>(),
+            NullDocGenLogger.Instance);
+
+        var p = records[0].Params.Single();
+        p.Columns.Should().NotBeNull();
+        p.Columns!.Should().HaveCount(2);
+        p.Columns![0].Name.Should().Be("Id");
+    }
+
+    [Fact]
+    public void ObservedColumnsAreEmittedWhenDeclaredAbsent()
+    {
+        var tableParam = new ParamRecord("contracts", ParamTypes.Table, "", Columns: null);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "the contracts exist", [tableParam], "Steps.cs", 1, "", "Auth")
+        };
+        var observed = new Dictionary<string, IReadOnlyList<ColumnRecord>>
+        {
+            ["the contracts exist"] = new List<ColumnRecord> { new("Symbol", "string") }.AsReadOnly(),
+        };
+
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), observed, NullDocGenLogger.Instance);
+
+        var p = records[0].Params.Single();
+        p.Columns!.Should().ContainSingle();
+        p.Columns![0].Name.Should().Be("Symbol");
+    }
+
+    [Fact]
+    public void ObservedColumnNotInDeclaredIsAppendedAsString()
+    {
+        var declared = new List<ColumnRecord> { new("Id", "int") };
+        var tableParam = new ParamRecord("contracts", ParamTypes.Table, "", declared);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "the contracts exist", [tableParam], "Steps.cs", 1, "", "Auth")
+        };
+        var observed = new Dictionary<string, IReadOnlyList<ColumnRecord>>
+        {
+            ["the contracts exist"] = new List<ColumnRecord>
+            {
+                new("Id",        "int"),
+                new("ExtraName", "string"),
+            }.AsReadOnly(),
+        };
+
+        var logger = new CapturingDocGenLogger();
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), observed, logger);
+
+        var p = records[0].Params.Single();
+        p.Columns!.Should().HaveCount(2);
+        p.Columns![0].Name.Should().Be("Id");
+        p.Columns![1].Name.Should().Be("ExtraName");
+        logger.VerboseMessages.Should().Contain(m => m.Contains("ExtraName"));
+    }
+
+    [Fact]
+    public void TableParamWithNoColumnSourcesEmitsEmptyColumns()
+    {
+        var tableParam = new ParamRecord("contracts", ParamTypes.Table, "", Columns: null);
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "the contracts exist", [tableParam], "Steps.cs", 1, "", "Auth")
+        };
+
+        var records = IdGenerator.AssignIds(
+            steps,
+            new Dictionary<string, int>(),
+            new Dictionary<string, IReadOnlyList<ColumnRecord>>(),
+            NullDocGenLogger.Instance);
+
+        var p = records[0].Params.Single();
+        p.Columns.Should().NotBeNull();
+        p.Columns!.Should().BeEmpty();
     }
 }
