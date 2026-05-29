@@ -97,4 +97,82 @@ public sealed class SchemaValidationTests
 
         result.IsValid.Should().BeFalse();
     }
+
+    [Fact]
+    public void EnvelopeWithTableParameterAndColumnsValidates()
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse("""
+            {
+              "$schema": "./schema/v1/step-library.schema.json",
+              "version": "1.0.0",
+              "generatedAt": "2026-05-28T09:00:00Z",
+              "generatorVersion": "1.0.0",
+              "enriched": false,
+              "domains": [{ "id": "Auth", "label": "Auth" }],
+              "steps": [{
+                "id": "auth-a1b2c3d4",
+                "type": "Given",
+                "pattern": "the contracts exist",
+                "params": [{
+                  "name": "contracts",
+                  "type": "table",
+                  "example": "",
+                  "columns": [
+                    { "name": "Id",     "type": "int" },
+                    { "name": "Symbol", "type": "string" }
+                  ]
+                }],
+                "file": "Auth/AuthSteps.cs",
+                "line": 1,
+                "domain": "Auth",
+                "tags": [],
+                "used": 0,
+                "description": "",
+                "source": "",
+                "suggestsNext": []
+              }],
+              "signature": { "algorithm": "SHA-256", "digest": "0000000000000000000000000000000000000000000000000000000000000000" }
+            }
+            """);
+
+        var schema = LoadSchema();
+        var result = schema.Evaluate(json);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void EnvelopeWithEmptyColumnsArrayValidates()
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse("""
+            {
+              "$schema": "./schema/v1/step-library.schema.json",
+              "version": "1.0.0",
+              "generatedAt": "2026-05-28T09:00:00Z",
+              "generatorVersion": "1.0.0",
+              "enriched": false,
+              "domains": [{ "id": "Auth", "label": "Auth" }],
+              "steps": [{
+                "id": "auth-a1b2c3d4",
+                "type": "Given",
+                "pattern": "the contracts exist",
+                "params": [{ "name": "t", "type": "table", "example": "", "columns": [] }],
+                "file": "Auth/AuthSteps.cs",
+                "line": 1,
+                "domain": "Auth",
+                "tags": [],
+                "used": 0,
+                "description": "",
+                "source": "",
+                "suggestsNext": []
+              }],
+              "signature": { "algorithm": "SHA-256", "digest": "0000000000000000000000000000000000000000000000000000000000000000" }
+            }
+            """);
+
+        var schema = LoadSchema();
+        var result = schema.Evaluate(json);
+
+        result.IsValid.Should().BeTrue();
+    }
 }
