@@ -1,7 +1,7 @@
 # Delta.DocGen — Developer Guide
 
-**Last updated:** 2026-05-27  
-**Implementation status:** Stories 1–13 complete (13 of 15 tasks done)
+**Last updated:** 2026-05-30  
+**Implementation status:** Stories 1–15 + Story 16 complete (154 tests passing)
 
 ---
 
@@ -367,6 +367,41 @@ Print to stdout: step count, feature count, unmatched step warnings, domain brea
 }
 ```
 
+For steps that accept a Gherkin data table, the `Table` parameter includes a `columns` array with name and inferred type for each column:
+
+```jsonc
+{
+  "id": "ord-f3a1b2c4",
+  "type": "Given",
+  "pattern": "I place the following orders",
+  "params": [
+    {
+      "name": "table",
+      "type": "table",
+      "example": "",
+      "columns": [
+        { "name": "Symbol",   "type": "string" },
+        { "name": "Quantity", "type": "int"    },
+        { "name": "Price",    "type": "string" }
+      ]
+    }
+  ],
+  ...
+}
+```
+
+Column types are inferred from observed cell values across all feature file usages (`int`, `decimal`, `bool`, `date`, `string`). The `columns` field is omitted for non-Table parameters.
+
+### Param types
+
+| Type | Description |
+|------|-------------|
+| `string` | String parameter bound to a `{string}` placeholder |
+| `int` | Integer parameter bound to a `{int}` placeholder |
+| `decimal` | Decimal parameter bound to a `{decimal}` placeholder |
+| `DocString` | String parameter with no corresponding placeholder — receives a Gherkin doc string |
+| `table` | Gherkin data table; carries `columns` array with name + inferred type |
+
 ### V1 field defaults
 
 | Field | V1 value | Populated in |
@@ -374,6 +409,7 @@ Print to stdout: step count, feature count, unmatched step warnings, domain brea
 | `description` | `""` | V2 (LLM) |
 | `tags` | `[]` | V2 (LLM) |
 | `params[].example` | `""` / `"0"` / `"0.00"` | V2 (LLM) |
+| `params[].columns` | Populated from feature files / C# body (Story 16) | ✅ V1.1 |
 | `suggestsNext` | `[]` | V2 (LLM / co-occurrence) |
 | `enriched` | `false` | Always false in V1 |
 
@@ -453,8 +489,9 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | Stories | Status |
 |---------|--------|
 | 1–15 | ✅ Complete, merged to master, pushed to GitHub |
+| 16 | ✅ Complete |
 
-**Test count:** 134 passing (Stories 1–15 + TD-C/D debt fixes + smoke-test-driven fixes)
+**Test count:** 154 passing
 
 **Smoke test:** Validated end-to-end against a real 1,256-file Reqnroll codebase (`C:\dev\triangle\Step Definitions`). Produced 5.8 MB signed JSON in ~9 min. See `docs/superpowers/specs/2026-05-28-story-15-smoke-test-results.md`.
 
@@ -477,17 +514,22 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 13 | CLI wiring | `RootCommand.cs`, `Program.cs` | ✅ |
 | 14 | Full test suite | All tests green, zero warnings | ✅ |
 | 15 | End-to-end smoke test | Real fixture files, full run, output verified | ✅ |
+| 16 | Table column extraction (feature files) | `TableColumnAggregator`, `ColumnRecord`, column type inference | ✅ |
+| 17 | Table column extraction (Roslyn) | Infer columns from method body for unused steps | ⬜ |
 
-### Project complete — V1 ready
+### Open stories
 
-All 15 stories closed. Story 15 was satisfied by a live smoke test against a real 1,256-file Reqnroll codebase rather than a synthetic fixture — that test produced a valid 5.8 MB signed JSON output and uncovered four real bugs in the doc tool which were fixed in flight. Full retrospective in `docs/superpowers/specs/2026-05-28-story-15-smoke-test-results.md`.
+| # | Story | Priority | Spec |
+|---|-------|----------|------|
+| 17 | Table column extraction from C# method bodies (Roslyn) | Medium (V1.2) | `docs/superpowers/stories/story-17-table-columns-from-roslyn.md` |
 
-**Possible follow-ups (not blocking V1):**
+**V2 backlog** (separate planning required): LLM enrichment, `suggestsNext` co-occurrence analysis, private key signing, parallel file parsing.
 
-- Performance: parallel file parsing (currently sequential — 9 min on 1,256 files)
-- LLM enrichment pass for V2 (`description`, `tags`, `params[].example`, `suggestsNext`)
-- Viewer/web UI to consume the JSON output
-- Address remaining deferred tech-debt items in `docs/tech-debt.md` Phase 4 tables
+### V1 retrospective
+
+All 15 original stories closed. Story 15 was satisfied by a live smoke test against a real 1,256-file Reqnroll codebase rather than a synthetic fixture — produced a valid 5.8 MB signed JSON output and uncovered four real bugs fixed in flight. Full retrospective in `docs/superpowers/specs/2026-05-28-story-15-smoke-test-results.md`.
+
+Story 16 (table columns) was implemented beyond spec: columns carry inferred types (`int`, `decimal`, `bool`, `date`, `string`) in addition to names, sourced from both Gherkin feature file observations and C# method body declarations.
 
 ---
 

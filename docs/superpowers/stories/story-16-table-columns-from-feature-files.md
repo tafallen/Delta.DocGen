@@ -1,6 +1,7 @@
 # Story 16: Table column extraction from feature files
 
 **Type:** Enhancement  
+**Status:** ✅ Complete (implemented in session 2026-05-28, 154 tests passing)  
 **Priority:** High (V1.1)  
 **Approach:** A — extract column names from Gherkin AST during feature file parsing
 
@@ -237,3 +238,65 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 `step-library.v1.schema.json` version: `1.0.0` → `1.1.0`
 
 This is a MINOR bump — `columns` is optional and absent on non-Table params. Viewers that ignore unknown fields (as required by the versioning spec) will continue to work without modification.
+
+---
+
+## What was actually built (implementation notes)
+
+The implementation exceeds the original spec in several ways:
+
+### `ColumnRecord` — columns have name AND inferred type
+
+Rather than storing column names as a plain `string[]`, a dedicated `ColumnRecord` was introduced:
+
+```csharp
+public sealed record ColumnRecord(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("type")] string Type
+);
+```
+
+Type is inferred from observed cell values across all usages:
+- All values parse as `int` → `"int"`
+- All values parse as `decimal` → `"decimal"`
+- All values parse as `bool` → `"bool"`
+- All values parse as `DateTime` → `"date"`
+- Otherwise → `"string"`
+- Fewer than 2 data rows → `"string"` (insufficient evidence)
+
+### Dual column source — feature files AND C# method bodies
+
+Columns are populated from two sources, merged at `IdGenerator.AssignIds`:
+
+1. **Feature file observations** (`TableColumnAggregator`) — scans all `.feature` files, harvests header rows from data tables, unions column names across multiple usages.
+2. **C# declarations** (`StepDefinitionExtractor.ResolveDeclaredColumns`) — when the method body uses `CreateSet<T>()` or `CreateInstance<T>()` with a type declared in the same file, properties of that type are extracted as declared columns.
+
+Declared columns (from C#) take precedence; observed columns from feature files fill in any gaps not covered by declarations.
+
+### New files delivered
+
+| File | Role |
+|------|------|
+| `Delta.DocGen/Scanner/Gherkin/TableColumnAggregator.cs` | Gherkin AST walker; harvests columns + infers types |
+| `Delta.DocGen/Model/ColumnRecord.cs` | `{ name, type }` record |
+
+### JSON output shape (actual)
+
+```jsonc
+"params": [
+  {
+    "name": "table",
+    "type": "table",
+    "example": "",
+    "columns": [
+      { "name": "Symbol",   "type": "string" },
+      { "name": "Quantity", "type": "int"    },
+      { "name": "Price",    "type": "string" }
+    ]
+  }
+]
+```
+
+### Test count
+
+154 tests passing (up from 130 before Story 16). Covers: column extraction from single and multiple feature files, type inference, column merging, declared vs observed precedence, steps with no table argument.

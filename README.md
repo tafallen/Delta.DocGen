@@ -4,7 +4,7 @@ A .NET 8 console tool that scans SpecFlow/Reqnroll step-definition files and Ghe
 
 ## Status
 
-**V1 in active development** — Stories 1–5 of 15 complete.
+**V1 complete** — Stories 1–15 delivered. Story 16 (table column extraction) also complete. 154 tests passing.
 
 ## What it does
 
