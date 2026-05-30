@@ -9,9 +9,15 @@ namespace Delta.DocGen.Model;
 /// <param name="Columns">For Table parameters, the list of column name+type pairs (declared from
 /// <c>CreateSet&lt;T&gt;</c>/<c>CreateInstance&lt;T&gt;</c> when same-file, else inferred from observed
 /// feature-file usage). <c>null</c> for non-Table parameters; serialised when present.</param>
+/// <param name="ColumnsSource">Provenance of column data: declared | roslyn | feature | roslyn+feature | declared+feature. Null when no columns available.</param>
 public sealed record ParamRecord(
     [property: JsonPropertyName("name")]    string Name,
     [property: JsonPropertyName("type")]    string Type,
     [property: JsonPropertyName("example")] string Example,
-    [property: JsonPropertyName("columns")] IReadOnlyList<ColumnRecord>? Columns = null
+    [property: JsonPropertyName("columns")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<ColumnRecord>? Columns = null,
+    [property: JsonPropertyName("columnsSource")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? ColumnsSource = null
 );

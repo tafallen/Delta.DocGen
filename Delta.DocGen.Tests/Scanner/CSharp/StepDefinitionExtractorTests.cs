@@ -574,4 +574,80 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         p.Type.Should().Be(ParamTypes.Table);
         p.Columns.Should().BeNull();
     }
+
+    [Fact]
+    public void TableParamWithGetStringCallsGetsRoslynSource()
+    {
+        var path = WriteFile("RoslynInfer.cs", """
+            using Reqnroll;
+            public class Steps
+            {
+                [Given("the following trades exist")]
+                public void GivenTradesExist(Table table)
+                {
+                    foreach (var row in table.Rows)
+                    {
+                        var sym = row["Symbol"];
+                        var qty = row["Quantity"];
+                    }
+                }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        var p = steps[0].Params.Single();
+        p.Type.Should().Be(ParamTypes.Table);
+        p.ColumnsSource.Should().Be("roslyn");
+        p.Columns.Should().NotBeNull();
+        p.Columns!.Select(c => c.Name).Should().Equal("Symbol", "Quantity");
+    }
+
+    [Fact]
+    public void TableParamWithNoBodyAccessHasNullColumnsSource()
+    {
+        var path = WriteFile("NoAccess.cs", """
+            using Reqnroll;
+            public class Steps
+            {
+                [Given("some table step")]
+                public void GivenSomeTable(Table table)
+                {
+                    // does nothing with table
+                }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        var p = steps[0].Params.Single();
+        p.Type.Should().Be(ParamTypes.Table);
+        p.ColumnsSource.Should().BeNull();
+        p.Columns.Should().BeNull();
+    }
+
+    [Fact]
+    public void TableParamWithCreateSetHasDeclaredSource()
+    {
+        var path = WriteFile("DeclaredSource.cs", """
+            using Reqnroll;
+
+            public sealed class Item { public string Name { get; set; } = ""; }
+
+            public class Steps
+            {
+                [Given("items exist")]
+                public void GivenItemsExist(Table table)
+                {
+                    var items = table.CreateSet<Item>();
+                }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        var p = steps[0].Params.Single();
+        p.Type.Should().Be(ParamTypes.Table);
+        p.ColumnsSource.Should().Be("declared");
+    }
 }

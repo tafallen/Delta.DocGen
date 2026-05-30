@@ -47,7 +47,13 @@ public static class StepDefinitionExtractor
                     var @params = ExtractParams(method.ParameterList, pattern, logger);
                     var declaredColumns = ResolveDeclaredColumns(method, compilationUnit);
                     if (declaredColumns is not null)
-                        @params = AttachColumnsToFirstTable(@params, declaredColumns);
+                    {
+                        @params = AttachColumnsToFirstTable(@params, declaredColumns, "declared");
+                    }
+                    else
+                    {
+                        @params = TryAttachRoslynColumns(@params, method);
+                    }
                     var line = attr.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
                     var source = method.ToString();
 
@@ -196,7 +202,7 @@ public static class StepDefinitionExtractor
     }
 
     private static IReadOnlyList<ParamRecord> AttachColumnsToFirstTable(
-        IReadOnlyList<ParamRecord> @params, IReadOnlyList<ColumnRecord> columns)
+        IReadOnlyList<ParamRecord> @params, IReadOnlyList<ColumnRecord> columns, string source)
     {
         var result = new List<ParamRecord>(@params.Count);
         var attached = false;
@@ -204,7 +210,36 @@ public static class StepDefinitionExtractor
         {
             if (!attached && p.Type == ParamTypes.Table)
             {
-                result.Add(p with { Columns = columns });
+                result.Add(p with { Columns = columns, ColumnsSource = source });
+                attached = true;
+            }
+            else
+            {
+                result.Add(p);
+            }
+        }
+        return result.AsReadOnly();
+    }
+
+    private static IReadOnlyList<ParamRecord> TryAttachRoslynColumns(
+        IReadOnlyList<ParamRecord> @params, MethodDeclarationSyntax method)
+    {
+        var result = new List<ParamRecord>(@params.Count);
+        var attached = false;
+        foreach (var p in @params)
+        {
+            if (!attached && p.Type == ParamTypes.Table)
+            {
+                var colNames = TableColumnInferrer.Infer(method, p.Name);
+                if (colNames.Count > 0)
+                {
+                    var cols = colNames.Select(n => new ColumnRecord(n, "string")).ToList();
+                    result.Add(p with { Columns = cols.AsReadOnly(), ColumnsSource = "roslyn" });
+                }
+                else
+                {
+                    result.Add(p);
+                }
                 attached = true;
             }
             else

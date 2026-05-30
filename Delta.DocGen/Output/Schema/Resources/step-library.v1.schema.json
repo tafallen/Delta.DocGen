@@ -56,6 +56,7 @@
               "name":    { "type": "string", "minLength": 1 },
               "type":    { "type": "string" },
               "example": { "type": "string" },
+              "columnsSource": { "type": "string" },
               "columns": {
                 "type": "array",
                 "items": {

@@ -76,6 +76,7 @@ public static class IdGenerator
 
             if (p.Columns is { Count: > 0 } declared)
             {
+                var existingSource = p.ColumnsSource ?? "declared";
                 if (observed is not null && !observedAttached)
                 {
                     var declaredNames = new HashSet<string>(declared.Select(c => c.Name), StringComparer.Ordinal);
@@ -85,19 +86,20 @@ public static class IdGenerator
                         logger.Verbose(
                             $"Observed columns not in declared type: {string.Join(", ", extra.Select(e => e.Name))} — appending as observed-string.");
                         var merged = declared.Concat(extra.Select(e => new ColumnRecord(e.Name, "string"))).ToList();
-                        result.Add(p with { Columns = merged.AsReadOnly() });
+                        var mergedSource = existingSource + "+feature";
+                        result.Add(p with { Columns = merged.AsReadOnly(), ColumnsSource = mergedSource });
                         observedAttached = true;
                         continue;
                     }
                 }
-                result.Add(p);  // declared as-is
+                result.Add(p);  // declared/roslyn as-is, source already set
                 observedAttached = true;
             }
             else
             {
                 if (observed is not null && !observedAttached)
                 {
-                    result.Add(p with { Columns = observed });
+                    result.Add(p with { Columns = observed, ColumnsSource = "feature" });
                     observedAttached = true;
                 }
                 else
