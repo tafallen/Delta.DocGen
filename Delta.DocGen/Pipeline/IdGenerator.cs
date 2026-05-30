@@ -104,7 +104,7 @@ public static class IdGenerator
                 }
                 else
                 {
-                    result.Add(p with { Columns = Array.Empty<ColumnRecord>() });
+                    result.Add(p);  // no columns available from any source — leave Columns null
                 }
             }
         }

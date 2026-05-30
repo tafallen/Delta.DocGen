@@ -256,7 +256,6 @@ public sealed class IdGeneratorTests
             NullDocGenLogger.Instance);
 
         var p = records[0].Params.Single();
-        p.Columns.Should().NotBeNull();
-        p.Columns!.Should().BeEmpty();
+        p.Columns.Should().BeNull();
     }
 }

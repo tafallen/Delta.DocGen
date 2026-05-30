@@ -107,7 +107,9 @@ public static class TableColumnInferrer
         {
             var expr = fe.Expression.ToString();
             // Matches: table.Rows, table.Rows.Skip(...), table.Rows.Take(...) etc.
-            if (expr.StartsWith($"{tableParamName}.Rows", StringComparison.Ordinal))
+            if (expr == $"{tableParamName}.Rows"
+                || expr.StartsWith($"{tableParamName}.Rows.", StringComparison.Ordinal)
+                || expr.StartsWith($"{tableParamName}.Rows[", StringComparison.Ordinal))
                 vars.Add(fe.Identifier.Text);
         }
         return vars;

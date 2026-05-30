@@ -95,6 +95,21 @@ public sealed class TableColumnInferrerTests
     }
 
     [Fact]
+    public void DoesNotMatchRowsCollectionProperty()
+    {
+        var method = ParseMethod(@"
+            [Given(""x"")]
+            public void Step(Table table) {
+                foreach (var row in table.RowsCollection) {
+                    var v = row[""Col""];
+                }
+            }");
+        // RowsCollection is not table.Rows — should not track loop var
+        var cols = TableColumnInferrer.Infer(method, "table");
+        cols.Should().BeEmpty();
+    }
+
+    [Fact]
     public void MixedPatternsUnionedInOrder()
     {
         var method = ParseMethod(@"
