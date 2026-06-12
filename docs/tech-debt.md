@@ -159,9 +159,16 @@ Production code uses `Encoding.UTF8` explicitly (per TD-17). The test helper doe
 
 ---
 
-## 🟡 Phase 3 — Medium work (alongside Stories 8–10)
+## ✅ Phase 3 — Medium work (now all resolved)
 
-### TD-A12 · Priority 16 — Discoverer has no logging
+| ID | Resolution |
+|----|-----------|
+| TD-A12 | ✅ `Discoverer.Discover` takes `IDocGenLogger logger`; emits Info at completion with file counts |
+| TD-A13 | ✅ `StepDefinitionExtractor.ExtractParams` warns on unknown Cucumber placeholder types; valid set is `int, decimal, float, string, word, bigdecimal` |
+| TD-14  | ✅ Warn now distinguishes "no arguments" from "argument is not a string literal" |
+| TD-B04 | ✅ Resolved earlier (Story 14) — Background step counting added |
+
+### TD-A12 · ✅ Resolved — Discoverer has no logging
 **File:** `Delta.DocGen/Pipeline/Discoverer.cs`
 
 Stage 2 is completely silent. A caller receives a `DiscoveryResult` with no log output — the user has no visibility into how many files were found or how long discovery took. All other pipeline stages log at least an `Info` summary. The logger is not part of `Discover()`'s signature, which prevents adding logging without an API change.
@@ -170,7 +177,7 @@ Stage 2 is completely silent. A caller receives a `DiscoveryResult` with no log 
 
 ---
 
-### TD-A13 · Priority 16 — Unknown Cucumber placeholder types silently accepted
+### TD-A13 · ✅ Resolved — Unknown Cucumber placeholder types silently accepted
 **File:** `Delta.DocGen/Scanner/CSharp/StepDefinitionExtractor.cs:79`
 
 `PlaceholderPattern` matches any `{...}` token. A pattern like `"I have {garbage} items"` is accepted without warning; the extractor infers that the `string` parameter maps to a placeholder named `{garbage}`, producing a `string`-typed `ParamRecord`. Valid Cucumber Expression types are `{int}`, `{decimal}`, `{float}`, `{string}`, `{word}`, `{bigdecimal}`. Unknown types will still be handled by Reqnroll (as long as a step binding converter exists), but the emitted schema type will be wrong.
@@ -179,7 +186,7 @@ Stage 2 is completely silent. A caller receives a `DiscoveryResult` with no log 
 
 ---
 
-### TD-14 · Priority 16 — `ExtractPattern` doesn't handle verbatim strings or constant references
+### TD-14 · ✅ Resolved — `ExtractPattern` doesn't handle verbatim strings or constant references
 **File:** `StepDefinitionExtractor.cs` (original TD-14)
 
 `ExtractPattern` looks for a `StringLiteralExpression`. A pattern defined as `[Given(MyConstants.LoginPattern)]` (a constant reference) returns `null` from `ExtractPattern`, and the step is skipped with a misleading Warn: "has no string argument" — when in fact it has an argument, just not a literal. Similarly, `[Given(@"I have \d+ items")]` (verbatim string) works because Roslyn extracts verbatim string values correctly, but there's no test for it.
