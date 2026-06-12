@@ -20,6 +20,12 @@ public static class CanonicalJson
         Converters = { new JsonStringEnumConverter() },
     };
 
+    static CanonicalJson()
+    {
+        _canonicalOptions.MakeReadOnly();
+        _prettyOptions.MakeReadOnly();
+    }
+
     public static string Serialise(object value)
     {
         var node = JsonSerializer.SerializeToNode(value, _canonicalOptions);

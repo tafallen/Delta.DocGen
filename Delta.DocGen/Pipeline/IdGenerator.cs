@@ -137,6 +137,9 @@ public static class IdGenerator
         var normalised = pattern.Trim().Normalize(System.Text.NormalizationForm.FormC).ToLowerInvariant();
         var input = $"{type}:{normalised}";
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        // 8 hex chars (32 bits): ~50% collision risk at ~77k distinct patterns (birthday bound).
+        // Acceptable for a doc-tool ID space; collisions are detected explicitly and either deduped
+        // (same domain + type) or logged as Error (cross-method).
         return Convert.ToHexString(bytes)[..8].ToLowerInvariant();
     }
 }

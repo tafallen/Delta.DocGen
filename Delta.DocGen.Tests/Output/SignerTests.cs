@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Delta.DocGen.Model;
 using Delta.DocGen.Output.Serialiser;
 using FluentAssertions;
@@ -78,8 +80,8 @@ public sealed class SignerTests
         var unsigned = signed with { Signature = null };
         var canonical = CanonicalJson.Serialise(unsigned);
         var expectedDigest = Convert.ToHexString(
-            System.Security.Cryptography.SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes(canonical)))
+            SHA256.HashData(
+                Encoding.UTF8.GetBytes(canonical)))
             .ToLowerInvariant();
 
         signed.Signature!.Digest.Should().Be(expectedDigest);

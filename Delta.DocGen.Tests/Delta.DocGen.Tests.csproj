@@ -8,6 +8,7 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="JsonSchema.Net" Version="7.2.3"/>
+    <!-- FluentAssertions pinned to v6 — v7 introduced a paid licence (Xceed) we don't want to take on. -->
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
