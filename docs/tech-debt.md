@@ -77,7 +77,7 @@
 | 🟠 Quick wins (Stories 12–13) | ~~6~~ 0 | ✅ All resolved (TD-D01, D03, D04, D06, D07, D11) |
 | 🟡 Medium work | 5 + ~~2~~ 0 + ~~5~~ 0 | TD-C09/C10 ✅; original 5 deferred; TD-D02/D05/D08/D13 ✅, TD-D12 documented |
 | 🟡 Story 14 polish | ~~7~~ 0 | ✅ TD-B04 (Background steps), TD-A14 (logger Clear), TD-D09/C18 (XML docs), TD-D16/D23 (CLI validation), TD-D17 (stronger exclude test) |
-| 🟢 Deferred | 12 + 7 + 9 | Low-risk polish (TD-D10, D14, D15, D18, D19, D20, D21, D22 + originals) |
+| 🟢 Deferred | ~~12~~ 0 + ~~7~~ 0 + ~~9~~ 2 | TD-21 (Roslyn bump — risky), TD-D15 (feature flag) — all others resolved |
 
 **Story 14 summary:** Background-step counting fixed (TD-B04 — only real correctness gap remaining), CLI `--verbosity` value validation + unknown-option pinning, XML doc comments on `PipelineRunner.Run` and `DomainAssigner`, `CapturingDocGenLogger.Clear()`, stronger exclude verification test. 130 tests passing; 0 warnings.
 
@@ -213,24 +213,22 @@ Tests that call `Extract()` multiple times on a single logger instance accumulat
 
 ---
 
-## 🟢 Phase 4 — Deferred (low risk or low value)
+## ✅ Phase 4 — Deferred (all resolved except TD-21 and TD-D15)
 
-Address opportunistically when touching the relevant file.
-
-| ID | File | Issue |
-|----|------|-------|
-| TD-03 | `ConfigLoader.cs` | `"General"` fallback domain is a magic string — extract to a constant alongside `LogVerbosity` |
-| TD-04 | `ConfigLoader.cs` | Private `ConfigFile` and `DomainRuleDto` DTOs use `{ get; set; }` instead of `{ get; init; }` |
-| TD-06 | `ConsoleLogger.cs` | Inconsistent log prefix spacing: `[INFO]    ` 4 spaces, `[VERBOSE] ` 1 space, `[WARN]    ` 4 spaces |
-| TD-08 | `StepRecord.cs` | `Used` is typed as `int` — semantically non-negative; no validation at construction |
-| TD-21 | `Delta.DocGen.csproj` | Roslyn version (4.9.2) skews ahead of the .NET 8 SDK's bundled version; consider pinning to avoid API drift |
-| TD-22 | `Delta.DocGen.Tests.csproj` | FluentAssertions v6 pin has no comment explaining why v7 was avoided (licence change) |
-| TD-25 | `ConfigLoaderTests.cs` | No explicit test for the zero-addition `AdditionalExcludes` path (no CLI excludes, config has excludes) |
-| TD-30 | `Program.cs` | Placeholder prints `"Delta.DocGen v1"` with no hint it is not yet functional |
-| TD-35 | `ConfigLoader.cs` | Two-argument `Path.GetFullPath(path, basePath)` use has no comment explaining the base-path overload is needed |
-| TD-36 | `DiscovererTests.cs` | Several `ContainSingle(predicate)` calls don't assert total collection count is exactly 1 |
-| TD-A15 | `StepDefinitionExtractorTests.cs` | No test for verbatim string literal patterns (`@"I have \d+ items"`) |
-| TD-A16 | `StepDefinitionExtractorTests.cs` | No test for `[StepDefinition]` attribute without a namespace qualification |
+| ID | Resolution |
+|----|-----------|
+| TD-03 | ✅ `ConfigDefaults.FallbackDomain` already in `DocGenConfig.cs`; `ConfigLoader` uses it (confirmed, register updated) |
+| TD-04 | ✅ `ConfigFile` and `DomainRuleDto` DTOs changed from `{ get; set; }` to `{ get; init; }` |
+| TD-06 | ✅ Log prefix spacing already consistent at 10 chars each (confirmed — no change needed) |
+| TD-08 | ✅ XML doc comment added to `StepRecord` noting `Used` is non-negative by contract |
+| TD-21 | 🟡 Roslyn version bump — skipped (risky, out of scope) |
+| TD-22 | ✅ FluentAssertions v6 licence comment added to `Delta.DocGen.Tests.csproj` |
+| TD-25 | ✅ `EmptyAdditionalExcludesPreservesConfigExcludes` test added to `ConfigLoaderTests.cs` |
+| TD-30 | ✅ `Program.cs` placeholder no longer present — register entry removed |
+| TD-35 | ✅ Two-arg `Path.GetFullPath` comment added to `ConfigLoader.cs` |
+| TD-36 | ✅ `ContainSingle(predicate).And.HaveCount(1)` added to `DiscovererTests` where predicate alone didn't pin count |
+| TD-A15 | ✅ `ExtractsVerbatimStringLiteralPattern` test added |
+| TD-A16 | ✅ Already covered by existing `ExtractsStepDefinitionAttribute` test (line 262) — confirmed, register updated |
 
 ---
 
@@ -330,19 +328,19 @@ Canonical JSON is the input to signing. Any change to `JsonSerializerOptions` (a
 
 ---
 
-## 🟢 Phase 4b — Deferred (Stories 8–10)
+## ✅ Phase 4b — Deferred (Stories 8–10, all resolved)
 
-| ID | File | Issue |
-|----|------|-------|
-| TD-C11 | `CanonicalJson.cs:11-21` | `JsonSerializerOptions` instances are not explicitly `MakeReadOnly()` — .NET 8 freezes on first use anyway |
-| TD-C12 | `IdGenerator.cs:62` | Magic string `"unknown"` should be a named constant alongside `ConfigDefaults` |
-| TD-C13 | `IdGenerator.cs:69` | SHA-256 truncated to 8 hex chars (32 bits): ~50% collision risk at ~77k steps (birthday bound). No comment justifies the length |
-| TD-C14 | `DomainAssigner.cs:39` | Info log uses `"step(s)"` — minor wording inconsistency with other stages |
-| TD-C15 | `SignerTests.cs:81` | Uses fully-qualified `System.Security.Cryptography.SHA256` and `System.Text.Encoding.UTF8` instead of `using` directives |
-| TD-C16 | `IdGeneratorTests.cs` | No test for an empty domain string (would produce `"unknown"` prefix) |
-| TD-C17 | `CanonicalJsonTests.cs:13` | `Dispose` doesn't swallow `IOException` — flaky on Windows if a previous handle is held |
-| TD-C18 | `DomainAssigner.cs` | No XML doc comment on the public static class explaining "first match wins" |
-| TD-C19 | `IdGenerator.cs:18` | `seenIds` value (the existing pattern) is only used for the exception message — could be `HashSet<string>` if the message dropped it; minor
+| ID | Resolution |
+|----|-----------|
+| TD-C11 | ✅ Not applicable — `MakeReadOnly()` on `JsonSerializerOptions` without a TypeInfoResolver throws in .NET 8; .NET freezes options on first use anyway |
+| TD-C12 | ✅ `UnknownDomainPrefix` private constant added to `IdGenerator` |
+| TD-C13 | ✅ Comment explaining birthday-bound collision risk and rationale added to `PatternHash` |
+| TD-C14 | ✅ Verified: `"step(s)"` wording is consistent across all stages — no change needed |
+| TD-C15 | ✅ `using System.Security.Cryptography;` and `using System.Text;` added to `SignerTests.cs`; fully-qualified refs replaced |
+| TD-C16 | ✅ `EmptyDomainStringProducesUnknownPrefixWithWarn` test added to `IdGeneratorTests.cs` |
+| TD-C17 | ✅ `CanonicalJsonTests.Dispose` now wraps delete in try/catch IOException |
+| TD-C18 | ✅ XML doc comment already present on `DomainAssigner` class (confirmed) |
+| TD-C19 | ✅ Obsolete — `seenIds` now stores `RawStep` for file/line comparison AND error message; design has moved past the original criticism |
 
 ---
 
@@ -472,20 +470,20 @@ Currently inert (dry-run writes nothing). If dry-run later emits envelope to std
 
 ---
 
-## 🟢 Phase 4c — Deferred (Stories 12–13)
+## ✅ Phase 4c — Deferred (Stories 12–13, all resolved except TD-D15)
 
-| ID | File | Issue |
-|----|------|-------|
-| TD-D09 | `PipelineRunner.cs:38` | No XML doc comment on `Run` clarifying that stages 2–8 are owned here, Stage 1 (config) by the caller |
-| TD-D10 | `Program.cs:1` | `using System.CommandLine;` looks unused but is needed for `InvokeAsync` extension — add a comment so it isn't deleted in cleanup |
-| TD-D14 | `PipelineRunner.cs:14` | `SchemaRelativeRef` hardcoded forward-slashes — fine for JSON, inconsistent with Windows path handling elsewhere (resolved by TD-D03's SchemaConstants) |
-| TD-D15 | `RootCommand.cs:24` | `--exclude` description says "additive" — no `--no-exclude-config` to suppress config excludes |
-| TD-D16 | `RootCommand.cs:30` | `--verbosity` accepts any string; `System.CommandLine` supports `FromAmong("silent","normal","verbose")` for early validation |
-| TD-D17 | `CliRunnerTests.cs:96-105` | `AdditionalExcludesAreAppliedOnTopOfConfig` only asserts exit 0 — does not actually verify the exclude took effect |
-| TD-D18 | `PipelineRunnerTests.cs:113-135` | `PipelineCatchesIdCollisionAndReturnsFailedResult` checks `File.Exists` but not `result.OutputPath`/`SchemaPath` are null |
-| TD-D19 | `PipelineFixture.cs` | Fixture used by both pipeline + CLI tests; workspace/config creation duplicated between the two test classes |
-| TD-D20 | `PipelineResult.cs` | All counts typed as `int`; no validation that they're non-negative |
-| TD-D21 | `PipelineRunner.cs:21` | `MatchPhrase` constant duplicated between producer and consumer (resolved alongside TD-D08) |
-| TD-D22 | `CliRunner.cs:11` | `ConsoleLogger` is not disposed — minor on the buffered colours path |
-| TD-D23 | `RootCommandTests.cs` | No test for unknown options (`--frobnicate`); `System.CommandLine` behaviour not pinned |
+| ID | Resolution |
+|----|-----------|
+| TD-D09 | ✅ XML doc comment already present on `PipelineRunner.Run` (confirmed) |
+| TD-D10 | ✅ Comment `// required for InvokeAsync extension on RootCommand` already present in `Program.cs` (confirmed) |
+| TD-D14 | ✅ Obsolete — `SchemaRelativeRef` already centralised in `SchemaConstants` (TD-D03) |
+| TD-D15 | 🟡 `--no-exclude-config` flag — feature work, not polish; skipped this round |
+| TD-D16 | ✅ Already resolved (TD-D16 in Stories 14 batch) |
+| TD-D17 | ✅ Already resolved (TD-D17 in Stories 14 batch) |
+| TD-D18 | ✅ Obsolete — test renamed/rewritten; pipeline now succeeds on collision (logs Error, skips duplicate); null OutputPath/SchemaPath concern no longer applies |
+| TD-D19 | ✅ `TestWorkspace` class added to `Delta.DocGen.Tests/Pipeline/Fixtures/`; `CliRunnerTests` refactored to use it |
+| TD-D20 | ✅ XML doc comment added to `PipelineResult` noting all count fields are non-negative by contract |
+| TD-D21 | ✅ Obsolete — `MatchPhrase` resolved alongside TD-D08 |
+| TD-D22 | ✅ Obsolete — `ConsoleLogger` has no disposable resources; `Console.ResetColor()` in finally blocks already covers colour state |
+| TD-D23 | ✅ Already resolved (Stories 14 batch) |
 
