@@ -688,6 +688,24 @@ public sealed class StepDefinitionExtractorTests : IDisposable
     }
 
     [Fact]
+    public void ExtractsVerbatimStringLiteralPattern()
+    {
+        var path = WriteFile("Steps/Verbatim.cs", """
+            using Reqnroll;
+            public class VerbatimSteps
+            {
+                [Given(@"I have \d+ items")]
+                public void GivenItems() { }
+            }
+            """);
+
+        var steps = StepDefinitionExtractor.Extract(path, _root, NullDocGenLogger.Instance);
+
+        steps.Should().ContainSingle();
+        steps[0].Pattern.Should().Be(@"I have \d+ items");
+    }
+
+    [Fact]
     public void NonLiteralPatternArgumentLogsDescriptiveWarn()
     {
         var logger = new CapturingDocGenLogger();

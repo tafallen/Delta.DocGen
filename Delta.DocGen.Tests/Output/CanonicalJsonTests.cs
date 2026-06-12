@@ -11,7 +11,11 @@ public sealed class CanonicalJsonTests : IDisposable
         Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 
     public CanonicalJsonTests() => Directory.CreateDirectory(_dir);
-    public void Dispose() => Directory.Delete(_dir, recursive: true);
+    public void Dispose()
+    {
+        try { if (Directory.Exists(_dir)) Directory.Delete(_dir, recursive: true); }
+        catch (IOException) { /* Windows handle race — ignore */ }
+    }
 
     [Fact]
     public void KeysSortedAlphabeticallyAtTopLevel()

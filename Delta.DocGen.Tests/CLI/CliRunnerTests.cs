@@ -7,19 +7,18 @@ namespace Delta.DocGen.Tests.CLI;
 
 public sealed class CliRunnerTests : IDisposable
 {
-    private readonly string _workspace;
-    private readonly string _root;
-    private readonly string _output;
+    private readonly TestWorkspace _workspace;
     private readonly string _configPath;
+
+    // Convenience accessors delegated to TestWorkspace.
+    private string _root       => _workspace.Root;
+    private string _output     => _workspace.Output;
+    private string _workspaceDir => _workspace.Workspace;
 
     public CliRunnerTests()
     {
-        _workspace  = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        _root       = Path.Combine(_workspace, "src");
-        _output     = Path.Combine(_workspace, "dist", "step-library.json");
-        _configPath = Path.Combine(_workspace, "docgen.config.json");
-        Directory.CreateDirectory(_root);
-        PipelineFixture.WriteFixture(_root);
+        _workspace  = new TestWorkspace();
+        _configPath = Path.Combine(_workspace.Workspace, "docgen.config.json");
 
         var configJson = JsonSerializer.Serialize(new
         {
@@ -34,11 +33,7 @@ public sealed class CliRunnerTests : IDisposable
         File.WriteAllText(_configPath, configJson);
     }
 
-    public void Dispose()
-    {
-        if (Directory.Exists(_workspace))
-            Directory.Delete(_workspace, recursive: true);
-    }
+    public void Dispose() => _workspace.Dispose();
 
     [Fact]
     public void SuccessfulRunReturnsZero()
@@ -68,7 +63,7 @@ public sealed class CliRunnerTests : IDisposable
     public void MissingConfigFileReturnsOne()
     {
         var exitCode = CliRunner.Run(new CliArgs(
-            ConfigPath: Path.Combine(_workspace, "missing.json"),
+            ConfigPath: Path.Combine(_workspaceDir,"missing.json"),
             Root: null, Output: null, Excludes: [],
             Verbosity: "silent", DryRun: false));
 
@@ -79,7 +74,7 @@ public sealed class CliRunnerTests : IDisposable
     public void CliRootOverrideTakesPrecedenceOverConfig()
     {
         // Point --root at a different but valid fixture dir.
-        var altRoot = Path.Combine(_workspace, "alt-src");
+        var altRoot = Path.Combine(_workspaceDir,"alt-src");
         Directory.CreateDirectory(altRoot);
         PipelineFixture.WriteFixture(altRoot);
 
@@ -175,7 +170,7 @@ public sealed class CliRunnerTests : IDisposable
     {
         var configJson = JsonSerializer.Serialize(new
         {
-            root    = Path.Combine(_workspace, "does-not-exist"),
+            root    = Path.Combine(_workspaceDir,"does-not-exist"),
             output  = _output,
             domains = Array.Empty<object>(),
         });

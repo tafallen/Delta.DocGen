@@ -241,6 +241,24 @@ public sealed class ConfigLoaderTests : IDisposable
     }
 
     [Fact]
+    public void EmptyAdditionalExcludesPreservesConfigExcludes()
+    {
+        var json = """
+            {
+              "root": "./tests",
+              "output": "./out.json",
+              "exclude": ["**/bin/**", "**/obj/**"]
+            }
+            """;
+        var path = Path.Combine(_dir, "docgen.config.json");
+        File.WriteAllText(path, json);
+
+        var config = ConfigLoader.Load(path, new ConfigOverrides { AdditionalExcludes = [] });
+
+        config.Exclude.Should().Equal("**/bin/**", "**/obj/**");
+    }
+
+    [Fact]
     public void LoadsConfigWithJsonComments()
     {
         var json = """

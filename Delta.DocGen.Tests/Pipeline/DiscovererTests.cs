@@ -28,8 +28,8 @@ public sealed class DiscovererTests : IDisposable
 
         var result = Discoverer.Discover(_root, excludes: [], NullDocGenLogger.Instance);
 
-        result.CsFiles.Should().ContainSingle(f => f.EndsWith("AuthSteps.cs"));
-        result.FeatureFiles.Should().ContainSingle(f => f.EndsWith("login.feature"));
+        result.CsFiles.Should().ContainSingle(f => f.EndsWith("AuthSteps.cs")).And.HaveCount(1);
+        result.FeatureFiles.Should().ContainSingle(f => f.EndsWith("login.feature")).And.HaveCount(1);
         result.CsFiles.Should().NotContain(f => f.EndsWith(".md"));
     }
 
@@ -42,7 +42,7 @@ public sealed class DiscovererTests : IDisposable
 
         var result = Discoverer.Discover(_root, excludes: ["**/meta/**"], NullDocGenLogger.Instance);
 
-        result.CsFiles.Should().ContainSingle(f => f.EndsWith("AuthSteps.cs"));
+        result.CsFiles.Should().ContainSingle(f => f.EndsWith("AuthSteps.cs")).And.HaveCount(1);
         result.CsFiles.Should().NotContain(f => f.Contains("meta"));
         result.FeatureFiles.Should().BeEmpty();
     }

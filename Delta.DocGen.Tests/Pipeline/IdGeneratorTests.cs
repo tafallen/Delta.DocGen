@@ -241,6 +241,21 @@ public sealed class IdGeneratorTests
     }
 
     [Fact]
+    public void EmptyDomainStringProducesUnknownPrefixWithWarn()
+    {
+        var logger = new CapturingDocGenLogger();
+        var steps = new List<RawStep>
+        {
+            new(StepType.Given, "I do something", [], "Steps.cs", 1, "", "")
+        };
+
+        var records = IdGenerator.AssignIds(steps, new Dictionary<string, int>(), new Dictionary<string, IReadOnlyList<ColumnRecord>>(), logger);
+
+        records[0].Id.Should().StartWith("unknown-");
+        logger.WarnMessages.Should().Contain(m => m.Contains("unknown"));
+    }
+
+    [Fact]
     public void TableParamWithNoColumnSourcesEmitsEmptyColumns()
     {
         var tableParam = new ParamRecord("contracts", ParamTypes.Table, "", Columns: null);
