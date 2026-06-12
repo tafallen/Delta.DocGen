@@ -12,6 +12,9 @@ public static class StepDefinitionExtractor
     private static readonly HashSet<string> StepAttributeNames =
         new(StringComparer.Ordinal) { "Given", "When", "Then", "StepDefinition" };
 
+    private static readonly HashSet<string> KnownCucumberTypes =
+        new(StringComparer.Ordinal) { "int", "decimal", "float", "string", "word", "bigdecimal" };
+
     private static readonly Regex PlaceholderPattern =
         new(@"\{[^}]+\}", RegexOptions.Compiled);
 
@@ -40,7 +43,11 @@ public static class StepDefinitionExtractor
                     var pattern = ExtractPattern(attr);
                     if (pattern is null)
                     {
-                        logger.Warn($"[{name}] at {relativePath} has no string argument — skipping.");
+                        var hasAnyArg = attr.ArgumentList?.Arguments.Count > 0;
+                        var detail = hasAnyArg
+                            ? "argument is not a string literal (constant references and method calls are not yet resolved)"
+                            : "has no arguments";
+                        logger.Warn($"[{name}] at {relativePath} {detail} — skipping.");
                         continue;
                     }
 
@@ -104,6 +111,12 @@ public static class StepDefinitionExtractor
         ParameterListSyntax paramList, string pattern, IDocGenLogger logger)
     {
         var placeholders = PlaceholderPattern.Matches(pattern);
+        foreach (Match ph in placeholders)
+        {
+            var inner = ph.Value.Trim('{', '}');
+            if (!KnownCucumberTypes.Contains(inner))
+                logger.Warn($"Unknown Cucumber placeholder type '{{{inner}}}' in pattern '{pattern}' — expected one of: int, decimal, float, string, word, bigdecimal.");
+        }
         var result = new List<ParamRecord>();
         var placeholderIndex = 0;
 

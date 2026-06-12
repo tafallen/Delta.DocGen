@@ -61,7 +61,7 @@ public static class PipelineRunner
             var unmatchedCounter = new UnmatchedCountingLogger(logger);
 
             // Stage 2: discovery
-            var discovery = Discoverer.Discover(config.Root, config.Exclude);
+            var discovery = Discoverer.Discover(config.Root, config.Exclude, unmatchedCounter);
 
             // Stage 3: C# extraction
             var rawSteps = new List<RawStep>();

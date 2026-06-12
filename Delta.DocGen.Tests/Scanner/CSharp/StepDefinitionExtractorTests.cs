@@ -312,7 +312,7 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         var steps = StepDefinitionExtractor.Extract(path, _root, logger);
 
         steps.Should().BeEmpty();
-        logger.WarnMessages.Should().ContainSingle(m => m.Contains("no string argument"));
+        logger.WarnMessages.Should().ContainSingle(m => m.Contains("has no arguments"));
     }
 
     [Fact]
@@ -649,5 +649,61 @@ public sealed class StepDefinitionExtractorTests : IDisposable
         var p = steps[0].Params.Single();
         p.Type.Should().Be(ParamTypes.Table);
         p.ColumnsSource.Should().Be("declared");
+    }
+
+    [Fact]
+    public void UnknownPlaceholderTypeWarns()
+    {
+        var logger = new CapturingDocGenLogger();
+        var path = WriteFile("Steps/Garbage.cs", """
+            using TechTalk.SpecFlow;
+            public class GarbageSteps
+            {
+                [Given("I have {garbage} items")]
+                public void GivenIHave(string value) { }
+            }
+            """);
+
+        StepDefinitionExtractor.Extract(path, _root, logger);
+
+        logger.WarnMessages.Should().Contain(m => m.Contains("Unknown Cucumber placeholder type") && m.Contains("garbage"));
+    }
+
+    [Fact]
+    public void KnownPlaceholderTypesDoNotWarn()
+    {
+        var logger = new CapturingDocGenLogger();
+        var path = WriteFile("Steps/Known.cs", """
+            using TechTalk.SpecFlow;
+            public class KnownSteps
+            {
+                [Given("I have {int} items of type {string}")]
+                public void GivenIHave(int count, string type) { }
+            }
+            """);
+
+        StepDefinitionExtractor.Extract(path, _root, logger);
+
+        logger.WarnMessages.Should().NotContain(m => m.Contains("Unknown Cucumber placeholder type"));
+    }
+
+    [Fact]
+    public void NonLiteralPatternArgumentLogsDescriptiveWarn()
+    {
+        var logger = new CapturingDocGenLogger();
+        var path = WriteFile("Steps/Constant.cs", """
+            using TechTalk.SpecFlow;
+            public static class Patterns { public const string Login = "I log in"; }
+            public class ConstantSteps
+            {
+                [Given(Patterns.Login)]
+                public void GivenLogin() { }
+            }
+            """);
+
+        StepDefinitionExtractor.Extract(path, _root, logger);
+
+        logger.WarnMessages.Should().Contain(m =>
+            m.Contains("argument is not a string literal") && m.Contains("Given"));
     }
 }

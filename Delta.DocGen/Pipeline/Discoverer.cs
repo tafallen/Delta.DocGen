@@ -1,5 +1,6 @@
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
+using Delta.DocGen.Logging;
 
 namespace Delta.DocGen.Pipeline;
 
@@ -16,7 +17,7 @@ public static class Discoverer
     /// Results are sorted ordinally for deterministic output.
     /// </summary>
     /// <exception cref="DirectoryNotFoundException">Thrown if <paramref name="root"/> does not exist.</exception>
-    public static DiscoveryResult Discover(string root, IReadOnlyList<string> excludes)
+    public static DiscoveryResult Discover(string root, IReadOnlyList<string> excludes, IDocGenLogger logger)
     {
         if (!Directory.Exists(root))
             throw new DirectoryNotFoundException($"Root directory does not exist: {root}");
@@ -48,9 +49,12 @@ public static class Discoverer
                 featureFiles.Add(relative);
         }
 
-        return new DiscoveryResult(
+        var result = new DiscoveryResult(
             csFiles.OrderBy(f => f, StringComparer.Ordinal).ToList().AsReadOnly(),
             featureFiles.OrderBy(f => f, StringComparer.Ordinal).ToList().AsReadOnly()
         );
+        logger.Info(
+            $"Discovery complete: {result.CsFiles.Count} C# file(s), {result.FeatureFiles.Count} feature file(s) under {root}.");
+        return result;
     }
 }

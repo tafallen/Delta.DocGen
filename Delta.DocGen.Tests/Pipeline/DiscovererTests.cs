@@ -1,4 +1,6 @@
+using Delta.DocGen.Logging;
 using Delta.DocGen.Pipeline;
+using Delta.DocGen.Tests.Logging;
 using FluentAssertions;
 
 namespace Delta.DocGen.Tests.Pipeline;
@@ -24,7 +26,7 @@ public sealed class DiscovererTests : IDisposable
         Touch("Features/login.feature");
         Touch("README.md");
 
-        var result = Discoverer.Discover(_root, excludes: []);
+        var result = Discoverer.Discover(_root, excludes: [], NullDocGenLogger.Instance);
 
         result.CsFiles.Should().ContainSingle(f => f.EndsWith("AuthSteps.cs"));
         result.FeatureFiles.Should().ContainSingle(f => f.EndsWith("login.feature"));
@@ -38,7 +40,7 @@ public sealed class DiscovererTests : IDisposable
         Touch("meta/MetaTests.cs");
         Touch("meta/helper.feature");
 
-        var result = Discoverer.Discover(_root, excludes: ["**/meta/**"]);
+        var result = Discoverer.Discover(_root, excludes: ["**/meta/**"], NullDocGenLogger.Instance);
 
         result.CsFiles.Should().ContainSingle(f => f.EndsWith("AuthSteps.cs"));
         result.CsFiles.Should().NotContain(f => f.Contains("meta"));
@@ -50,7 +52,7 @@ public sealed class DiscovererTests : IDisposable
     {
         Touch("Auth/AuthSteps.cs");
 
-        var result = Discoverer.Discover(_root, excludes: []);
+        var result = Discoverer.Discover(_root, excludes: [], NullDocGenLogger.Instance);
 
         result.CsFiles.Should().ContainSingle();
         result.CsFiles[0].Should().Be("Auth/AuthSteps.cs");
@@ -59,7 +61,7 @@ public sealed class DiscovererTests : IDisposable
     [Fact]
     public void EmptyRootReturnsEmptyLists()
     {
-        var result = Discoverer.Discover(_root, excludes: []);
+        var result = Discoverer.Discover(_root, excludes: [], NullDocGenLogger.Instance);
 
         result.CsFiles.Should().BeEmpty();
         result.FeatureFiles.Should().BeEmpty();
@@ -69,7 +71,7 @@ public sealed class DiscovererTests : IDisposable
     public void ThrowsIfRootDoesNotExist()
     {
         var missing = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "root");
-        var act = () => Discoverer.Discover(missing, excludes: []);
+        var act = () => Discoverer.Discover(missing, excludes: [], NullDocGenLogger.Instance);
         act.Should().Throw<DirectoryNotFoundException>().WithMessage("*does not exist*");
     }
 
@@ -79,7 +81,7 @@ public sealed class DiscovererTests : IDisposable
         Touch("RootSteps.cs");
         Touch("root.feature");
 
-        var result = Discoverer.Discover(_root, excludes: []);
+        var result = Discoverer.Discover(_root, excludes: [], NullDocGenLogger.Instance);
 
         result.CsFiles.Should().ContainSingle(f => f == "RootSteps.cs");
         result.FeatureFiles.Should().ContainSingle(f => f == "root.feature");
@@ -92,7 +94,7 @@ public sealed class DiscovererTests : IDisposable
         Touch("A/ASteps.cs");
         Touch("M/MSteps.cs");
 
-        var result = Discoverer.Discover(_root, excludes: []);
+        var result = Discoverer.Discover(_root, excludes: [], NullDocGenLogger.Instance);
 
         result.CsFiles.Should().BeInAscendingOrder(StringComparer.Ordinal);
     }
@@ -102,7 +104,7 @@ public sealed class DiscovererTests : IDisposable
     {
         Touch("Auth/AuthSteps.cs");
 
-        var result = Discoverer.Discover(_root, excludes: []);
+        var result = Discoverer.Discover(_root, excludes: [], NullDocGenLogger.Instance);
 
         result.CsFiles.Should().ContainSingle();
     }
@@ -112,8 +114,21 @@ public sealed class DiscovererTests : IDisposable
     {
         Touch("Auth/AuthSteps.cs");
 
-        var result = Discoverer.Discover(_root, excludes: ["**/nonexistent/**"]);
+        var result = Discoverer.Discover(_root, excludes: ["**/nonexistent/**"], NullDocGenLogger.Instance);
 
         result.CsFiles.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void DiscoverLogsCompletionWithFileCounts()
+    {
+        var logger = new CapturingDocGenLogger();
+        File.WriteAllText(Path.Combine(_root, "Steps.cs"), "");
+        File.WriteAllText(Path.Combine(_root, "feature.feature"), "Feature: Sample");
+
+        Discoverer.Discover(_root, [], logger);
+
+        logger.InfoMessages.Should().ContainSingle(m =>
+            m.Contains("Discovery complete") && m.Contains("1 C#") && m.Contains("1 feature"));
     }
 }
