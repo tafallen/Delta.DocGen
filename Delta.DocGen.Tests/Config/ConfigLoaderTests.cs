@@ -275,4 +275,26 @@ public sealed class ConfigLoaderTests : IDisposable
 
         config.Root.Should().Be(Path.GetFullPath("./tests", _dir));
     }
+
+    [Fact]
+    public void SuppressConfigExcludesDiscardsConfigExcludes()
+    {
+        var json = """
+            {
+              "root": "./tests",
+              "output": "./out.json",
+              "exclude": ["**/bin/**", "**/obj/**"]
+            }
+            """;
+        var path = Path.Combine(_dir, "docgen.config.json");
+        File.WriteAllText(path, json);
+
+        var config = ConfigLoader.Load(path, new ConfigOverrides
+        {
+            SuppressConfigExcludes = true,
+            AdditionalExcludes     = ["**/dist/**"],
+        });
+
+        config.Exclude.Should().Equal("**/dist/**");
+    }
 }

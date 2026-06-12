@@ -90,4 +90,21 @@ public sealed class RootCommandTests
         exitCode.Should().NotBe(0);
         handlerCalled.Should().BeFalse();
     }
+
+    [Fact]
+    public void NoExcludeConfigFlagAbsent()
+    {
+        var args = Capture();
+
+        args.NoExcludeConfig.Should().BeFalse();
+    }
+
+    [Fact]
+    public void NoExcludeConfigFlagPresent()
+    {
+        var args = Capture("--no-exclude-config", "--exclude", "**/bin/**");
+
+        args.NoExcludeConfig.Should().BeTrue();
+        args.Excludes.Should().Equal("**/bin/**");
+    }
 }

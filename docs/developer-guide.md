@@ -1,7 +1,7 @@
 # Delta.DocGen — Developer Guide
 
-**Last updated:** 2026-05-30  
-**Implementation status:** Stories 1–15 + Story 16 complete (154 tests passing)
+**Last updated:** 2026-06-12  
+**Implementation status:** Stories 1–18 complete (177 tests passing)
 
 ---
 
@@ -476,9 +476,10 @@ Options:
   --exclude <pattern>  Add an exclude glob (repeatable; additive with config excludes)
   --verbosity <level>  silent | normal | verbose (default: normal)
   --dry-run            Scan and report but do not write output file
+  --no-exclude-config  Suppress excludes loaded from the config file (CLI --exclude still applies)
 ```
 
-CLI arguments always take precedence over config file values. `--exclude` is additive (does not replace config excludes).
+CLI arguments always take precedence over config file values. `--exclude` is additive (does not replace config excludes) unless `--no-exclude-config` is also passed.
 
 ---
 
@@ -488,9 +489,9 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 
 | Stories | Status |
 |---------|--------|
-| 1–17 | ✅ Complete, merged to master, pushed to GitHub |
+| 1–18 | ✅ Complete, merged to master, pushed to GitHub |
 
-**Test count:** 165 passing
+**Test count:** 177 passing
 
 **Smoke test:** Validated end-to-end against a real 1,256-file Reqnroll codebase (`C:\dev\triangle\Step Definitions`). Produced 5.8 MB signed JSON in ~9 min. See `docs/superpowers/specs/2026-05-28-story-15-smoke-test-results.md`.
 
@@ -515,13 +516,11 @@ CLI arguments always take precedence over config file values. `--exclude` is add
 | 15 | End-to-end smoke test | Real fixture files, full run, output verified | ✅ |
 | 16 | Table column extraction (feature files) | `TableColumnAggregator`, `ColumnRecord`, column type inference | ✅ |
 | 17 | Table column extraction (Roslyn) | `TableColumnInferrer` infers columns from method body for unused steps | ✅ |
-| 18 | `--no-exclude-config` CLI flag | Suppress config-file excludes from the command line | ⬜ |
+| 18 | `--no-exclude-config` CLI flag | Suppress config-file excludes from the command line | ✅ |
 
 ### Open stories
 
-| # | Story | Priority | Spec |
-|---|-------|----------|------|
-| 18 | `--no-exclude-config` CLI flag | Low (V1.x) | `docs/superpowers/stories/story-18-no-exclude-config-flag.md` |
+None. All 18 stories closed.
 
 **V2 backlog** (separate planning required): LLM enrichment, `suggestsNext` co-occurrence analysis, private key signing, parallel file parsing.
 

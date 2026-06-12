@@ -15,10 +15,11 @@ public static class CliRunner
         {
             config = ConfigLoader.Load(args.ConfigPath, new ConfigOverrides
             {
-                Root               = args.Root,
-                Output             = args.Output,
-                LogVerbosity       = args.Verbosity,
-                AdditionalExcludes = args.Excludes,
+                Root                   = args.Root,
+                Output                 = args.Output,
+                LogVerbosity           = args.Verbosity,
+                AdditionalExcludes     = args.Excludes,
+                SuppressConfigExcludes = args.NoExcludeConfig,
             });
         }
         catch (Exception ex)

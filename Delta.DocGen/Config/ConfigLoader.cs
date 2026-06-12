@@ -10,6 +10,7 @@ public sealed record ConfigOverrides
     public string? Output { get; init; }
     public string? LogVerbosity { get; init; }
     public IReadOnlyList<string> AdditionalExcludes { get; init; } = [];
+    public bool SuppressConfigExcludes { get; init; }
 }
 
 public static class ConfigLoader
@@ -36,7 +37,8 @@ public static class ConfigLoader
         var configDir = Path.GetDirectoryName(Path.GetFullPath(configPath))
             ?? throw new InvalidOperationException($"Cannot determine directory for config path: {configPath}");
 
-        var excludes = new List<string>(file.Exclude ?? []);
+        var baseExcludes = overrides.SuppressConfigExcludes ? [] : (file.Exclude ?? []);
+        var excludes = new List<string>(baseExcludes);
         excludes.AddRange(overrides.AdditionalExcludes);
 
         var verbosity = (overrides.LogVerbosity ?? file.LogVerbosity ?? LogVerbosity.Normal)

@@ -42,6 +42,10 @@ public static class CliRootCommand
             aliases: ["--dry-run"],
             description: "Scan and report but do not write output file");
 
+        var noExcludeConfigOption = new Option<bool>(
+            aliases: ["--no-exclude-config"],
+            description: "Suppress excludes loaded from the config file (CLI --exclude still applies)");
+
         var cmd = new RootCommand(
             "Delta.DocGen — generate a step library from a Reqnroll project");
         cmd.AddOption(configOption);
@@ -50,16 +54,18 @@ public static class CliRootCommand
         cmd.AddOption(excludeOption);
         cmd.AddOption(verbosityOption);
         cmd.AddOption(dryRunOption);
+        cmd.AddOption(noExcludeConfigOption);
 
         cmd.SetHandler(context =>
         {
             var args = new CliArgs(
-                ConfigPath: context.ParseResult.GetValueForOption(configOption) ?? "./docgen.config.json",
-                Root:       context.ParseResult.GetValueForOption(rootOption),
-                Output:     context.ParseResult.GetValueForOption(outputOption),
-                Excludes:   context.ParseResult.GetValueForOption(excludeOption) ?? [],
-                Verbosity:  context.ParseResult.GetValueForOption(verbosityOption),
-                DryRun:     context.ParseResult.GetValueForOption(dryRunOption));
+                ConfigPath:      context.ParseResult.GetValueForOption(configOption) ?? "./docgen.config.json",
+                Root:            context.ParseResult.GetValueForOption(rootOption),
+                Output:          context.ParseResult.GetValueForOption(outputOption),
+                Excludes:        context.ParseResult.GetValueForOption(excludeOption) ?? [],
+                Verbosity:       context.ParseResult.GetValueForOption(verbosityOption),
+                DryRun:          context.ParseResult.GetValueForOption(dryRunOption),
+                NoExcludeConfig: context.ParseResult.GetValueForOption(noExcludeConfigOption));
             context.ExitCode = handler(args);
         });
 

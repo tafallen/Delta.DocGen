@@ -6,4 +6,5 @@ public sealed record CliArgs(
     string?               Output,
     IReadOnlyList<string> Excludes,
     string?               Verbosity,
-    bool                  DryRun);
+    bool                  DryRun,
+    bool                  NoExcludeConfig);
