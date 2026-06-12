@@ -1,5 +1,9 @@
 namespace Delta.DocGen.Pipeline;
 
+/// <summary>
+/// Outcome of a pipeline run. All count fields are non-negative by contract;
+/// negative values indicate a bug in the producing stage.
+/// </summary>
 public sealed record PipelineResult(
     bool            Success,
     int             StepCount,

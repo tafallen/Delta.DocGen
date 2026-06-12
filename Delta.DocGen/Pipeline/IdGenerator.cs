@@ -7,6 +7,7 @@ namespace Delta.DocGen.Pipeline;
 
 public static class IdGenerator
 {
+    private const string UnknownDomainPrefix = "unknown";
     public static IReadOnlyList<StepRecord> AssignIds(
         IReadOnlyList<RawStep> steps,
         IReadOnlyDictionary<string, int> usageCounts,
@@ -125,8 +126,8 @@ public static class IdGenerator
         var result = sb.ToString().Trim('-');
         if (result.Length == 0)
         {
-            logger?.Warn($"Domain '{domain}' produced an empty ID prefix after sanitisation; using 'unknown'.");
-            return "unknown";
+            logger?.Warn($"Domain '{domain}' produced an empty ID prefix after sanitisation; using '{UnknownDomainPrefix}'.");
+            return UnknownDomainPrefix;
         }
         return result;
     }

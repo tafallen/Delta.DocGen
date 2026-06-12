@@ -3,6 +3,9 @@ using System.Text.Json.Serialization;
 namespace Delta.DocGen.Model;
 
 /// <summary>Fully resolved step — all pipeline stages complete.</summary>
+/// <remarks>
+/// <para><see cref="Used"/>: Non-negative count of feature-file occurrences. Treat negative values as a bug.</para>
+/// </remarks>
 public sealed record StepRecord(
     [property: JsonPropertyName("id")]          string Id,
     [property: JsonPropertyName("type")]        StepType Type,

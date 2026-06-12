@@ -32,6 +32,7 @@ public static class ConfigLoader
         var file = JsonSerializer.Deserialize<ConfigFile>(json, _options)
                    ?? throw new InvalidOperationException("Config file is empty or invalid JSON.");
 
+        // Two-arg overload: resolve relative paths against the config-file directory, not the process CWD.
         var configDir = Path.GetDirectoryName(Path.GetFullPath(configPath))
             ?? throw new InvalidOperationException($"Cannot determine directory for config path: {configPath}");
 
@@ -82,18 +83,18 @@ public static class ConfigLoader
 
     private sealed class ConfigFile
     {
-        public string? Root { get; set; }
-        public string? Output { get; set; }
-        public List<string>? Exclude { get; set; }
-        public string? LogVerbosity { get; set; }
-        public List<DomainRuleDto>? Domains { get; set; }
-        public string? FallbackDomain { get; set; }
+        public string? Root { get; init; }
+        public string? Output { get; init; }
+        public List<string>? Exclude { get; init; }
+        public string? LogVerbosity { get; init; }
+        public List<DomainRuleDto>? Domains { get; init; }
+        public string? FallbackDomain { get; init; }
     }
 
     private sealed class DomainRuleDto
     {
-        public string Pattern { get; set; } = "";
-        public string Domain { get; set; } = "";
-        public string Label { get; set; } = "";
+        public string Pattern { get; init; } = "";
+        public string Domain { get; init; } = "";
+        public string Label { get; init; } = "";
     }
 }
