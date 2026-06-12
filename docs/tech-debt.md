@@ -77,7 +77,7 @@
 | 🟠 Quick wins (Stories 12–13) | ~~6~~ 0 | ✅ All resolved (TD-D01, D03, D04, D06, D07, D11) |
 | 🟡 Medium work | 5 + ~~2~~ 0 + ~~5~~ 0 | TD-C09/C10 ✅; original 5 deferred; TD-D02/D05/D08/D13 ✅, TD-D12 documented |
 | 🟡 Story 14 polish | ~~7~~ 0 | ✅ TD-B04 (Background steps), TD-A14 (logger Clear), TD-D09/C18 (XML docs), TD-D16/D23 (CLI validation), TD-D17 (stronger exclude test) |
-| 🟢 Deferred | ~~12~~ 0 + ~~7~~ 0 + ~~9~~ 2 | TD-21 (Roslyn bump — risky), TD-D15 (feature flag) — all others resolved |
+| 🟢 Deferred | ~~12~~ 0 + ~~7~~ 0 + ~~9~~ 1 | TD-21 (Roslyn bump — risky) — TD-D15 promoted to Story 18; all others resolved |
 
 **Story 14 summary:** Background-step counting fixed (TD-B04 — only real correctness gap remaining), CLI `--verbosity` value validation + unknown-option pinning, XML doc comments on `PipelineRunner.Run` and `DomainAssigner`, `CapturingDocGenLogger.Clear()`, stronger exclude verification test. 130 tests passing; 0 warnings.
 
@@ -213,7 +213,7 @@ Tests that call `Extract()` multiple times on a single logger instance accumulat
 
 ---
 
-## ✅ Phase 4 — Deferred (all resolved except TD-21 and TD-D15)
+## ✅ Phase 4 — Deferred (all resolved except TD-21; TD-D15 promoted to Story 18)
 
 | ID | Resolution |
 |----|-----------|
@@ -470,14 +470,14 @@ Currently inert (dry-run writes nothing). If dry-run later emits envelope to std
 
 ---
 
-## ✅ Phase 4c — Deferred (Stories 12–13, all resolved except TD-D15)
+## ✅ Phase 4c — Deferred (Stories 12–13, all resolved; TD-D15 promoted to Story 18)
 
 | ID | Resolution |
 |----|-----------|
 | TD-D09 | ✅ XML doc comment already present on `PipelineRunner.Run` (confirmed) |
 | TD-D10 | ✅ Comment `// required for InvokeAsync extension on RootCommand` already present in `Program.cs` (confirmed) |
 | TD-D14 | ✅ Obsolete — `SchemaRelativeRef` already centralised in `SchemaConstants` (TD-D03) |
-| TD-D15 | 🟡 `--no-exclude-config` flag — feature work, not polish; skipped this round |
+| TD-D15 | ➡ Promoted to Story 18 — `docs/superpowers/stories/story-18-no-exclude-config-flag.md` |
 | TD-D16 | ✅ Already resolved (TD-D16 in Stories 14 batch) |
 | TD-D17 | ✅ Already resolved (TD-D17 in Stories 14 batch) |
 | TD-D18 | ✅ Obsolete — test renamed/rewritten; pipeline now succeeds on collision (logs Error, skips duplicate); null OutputPath/SchemaPath concern no longer applies |
